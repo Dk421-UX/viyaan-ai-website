@@ -28,8 +28,11 @@ async function writeLocalMessages(messages: any[]) {
   }
 }
 
-// GET: Fetch all messages (Admin only)
 export async function GET(request: Request) {
+  if (!isSupabaseAdminConfigured) {
+    return NextResponse.json({ error: "Database configuration is missing" }, { status: 500 });
+  }
+
   try {
     const url = new URL(request.url);
     const password = url.searchParams.get("password");
@@ -77,6 +80,10 @@ export async function GET(request: Request) {
 
 // POST: Submit a new contact message
 export async function POST(request: Request) {
+  if (!isSupabaseAdminConfigured) {
+    return NextResponse.json({ error: "Database configuration is missing" }, { status: 500 });
+  }
+
   try {
     const body = await request.json();
     const { name, email, company, phone, subject, message } = body;
@@ -128,6 +135,10 @@ export async function POST(request: Request) {
 
 // PATCH/DELETE: Manage contact messages (Admin only)
 export async function PUT(request: Request) {
+  if (!isSupabaseAdminConfigured) {
+    return NextResponse.json({ error: "Database configuration is missing" }, { status: 500 });
+  }
+
   try {
     const body = await request.json();
     const { action, id, status, password } = body;

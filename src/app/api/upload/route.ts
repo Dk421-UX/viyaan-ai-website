@@ -8,6 +8,10 @@ const GITHUB_REPO = process.env.GITHUB_REPO;
 const GITHUB_BRANCH = process.env.GITHUB_BRANCH || "main";
 
 export async function POST(request: Request) {
+  if (!isSupabaseAdminConfigured) {
+    return NextResponse.json({ error: "Database configuration is missing" }, { status: 500 });
+  }
+
   try {
     const formData = await request.formData();
     const file = formData.get("file") as File;

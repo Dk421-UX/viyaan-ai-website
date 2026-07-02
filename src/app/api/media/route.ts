@@ -11,6 +11,10 @@ const localUploadDir = path.join(process.cwd(), "public", "uploads");
 
 // GET: List all media files
 export async function GET() {
+  if (!isSupabaseAdminConfigured) {
+    return NextResponse.json({ error: "Database configuration is missing" }, { status: 500 });
+  }
+
   // 1. Supabase Media List if configured
   if (isSupabaseAdminConfigured && supabaseAdmin) {
     try {
@@ -94,6 +98,10 @@ export async function GET() {
 
 // POST/DELETE: Delete a media file
 export async function POST(request: Request) {
+  if (!isSupabaseAdminConfigured) {
+    return NextResponse.json({ error: "Database configuration is missing" }, { status: 500 });
+  }
+
   try {
     const body = await request.json();
     const { filename, sha, password } = body;

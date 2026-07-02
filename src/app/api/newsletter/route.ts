@@ -32,6 +32,10 @@ function resolveAuthHeader(request: Request) {
 
 // GET: Admin list subscribers
 export async function GET(request: Request) {
+  if (!isSupabaseAdminConfigured) {
+    return NextResponse.json({ error: "Database configuration is missing" }, { status: 500 });
+  }
+
   const password = resolveAuthHeader(request);
   const validPassphrase = "viyaan2026";
 
@@ -56,6 +60,10 @@ export async function GET(request: Request) {
 
 // POST: Public subscribe
 export async function POST(request: Request) {
+  if (!isSupabaseAdminConfigured) {
+    return NextResponse.json({ error: "Database configuration is missing" }, { status: 500 });
+  }
+
   try {
     const body = await request.json();
     const { email, name } = body;
@@ -108,6 +116,10 @@ export async function POST(request: Request) {
 
 // DELETE: Admin remove subscriber
 export async function DELETE(request: Request) {
+  if (!isSupabaseAdminConfigured) {
+    return NextResponse.json({ error: "Database configuration is missing" }, { status: 500 });
+  }
+
   try {
     const body = await request.json();
     const { id, password } = body;

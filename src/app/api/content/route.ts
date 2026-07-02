@@ -27,6 +27,10 @@ async function ensureDbInit() {
 }
 
 export async function GET() {
+  if (!isSupabaseAdminConfigured) {
+    return NextResponse.json({ error: "Database configuration is missing" }, { status: 500 });
+  }
+
   await ensureDbInit();
   const data = await getDb();
   if (!data) {
@@ -36,6 +40,10 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  if (!isSupabaseAdminConfigured) {
+    return NextResponse.json({ error: "Database configuration is missing" }, { status: 500 });
+  }
+
   try {
     await ensureDbInit();
     const body = await request.json();
