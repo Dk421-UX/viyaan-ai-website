@@ -1,0 +1,184 @@
+{
+  "companyInfo": {
+    "name": "Viyaan AI",
+    "tagline": "Intelligence Beyond the Human Mind.",
+    "description": "Viyaan AI is a technology startup focused on building intelligent systems using Artificial Intelligence, Data Science, and Automation. Our mission is to extend human capabilities through intelligent technology and data-driven innovation.",
+    "email": "viyaan.ai.team@gmail.com",
+    "location": "Chennai, India / Remote",
+    "linkedinCompany": "https://www.linkedin.com/company/viyaan-ai",
+    "linkedinFounder": "https://www.linkedin.com/in/dharani-kumar-49622b349",
+    "twitterFounder": "https://x.com/by_dharani",
+    "responseTime": "2 business days",
+    "founderImage": "/founder.jpeg"
+  },
+  "navigation": [
+    {
+      "label": "Home",
+      "href": "/"
+    },
+    {
+      "label": "Products",
+      "href": "/products"
+    },
+    {
+      "label": "Research",
+      "href": "/research"
+    },
+    {
+      "label": "Innovation Lab",
+      "href": "/lab"
+    },
+    {
+      "label": "Founder",
+      "href": "/founder"
+    },
+    {
+      "label": "Contact",
+      "href": "/contact"
+    }
+  ],
+  "seo": {
+    "home": {
+      "title": "Viyaan AI — Intelligence Beyond the Human Mind",
+      "description": "Building next-generation intelligent systems with emotional awareness, psychology-first design, and long-term reflection retention."
+    },
+    "products": {
+      "title": "Products Suite — Viyaan AI",
+      "description": "Explore the Viyaan AI product ecosystem: JOI Companion AI, Human OS, and Viyaan Future."
+    },
+    "research": {
+      "title": "Research Frontiers — Viyaan AI",
+      "description": "Exploring cognitive architectures, human-computer symbiosis, and private future continuity."
+    },
+    "lab": {
+      "title": "Innovation Lab — Viyaan AI",
+      "description": "Experimental tools and utility applications built in public by Viyaan AI."
+    },
+    "founder": {
+      "title": "Founding Architect — Viyaan AI",
+      "description": "Dharani Kumar, founder of Viyaan AI, building systems that extend human capability."
+    },
+    "contact": {
+      "title": "Connect — Viyaan AI",
+      "description": "Connect with the Viyaan AI team for inquiries, collaborations, and career opportunities."
+    },
+    "blog": {
+      "title": "Insights & News — Viyaan AI",
+      "description": "Latest updates, announcements, and thoughts on AI engineering from Viyaan AI."
+    }
+  },
+  "products": [
+    {
+      "id": "joi",
+      "name": "JOI Companion AI",
+      "tagline": "Talk to JOI // Powered by Viyaan AI",
+      "description": "An emotionally intelligent companion application. JOI is designed for supportive conversations, offering customizable emotional states (calm, comforting, curious, playful, reflective, concerned, peaceful), ambient audio toggle, and text or microphone voice inputs within an atmospheric visual canvas.",
+      "features": [
+        "Customizable emotional state overrides",
+        "Ambient soundscapes and WebGL-rendered presence",
+        "Text-input and microphone voice capture support",
+        "Private workspace design focusing on calm interaction"
+      ],
+      "dataFlow": "A companion designed to adapt mood states according to reflection inputs, providing an immediate sounding board for self-expression.",
+      "url": "https://joi-ai-wq7f.vercel.app/",
+      "status": "published"
+    },
+    {
+      "id": "human-os",
+      "name": "Human OS",
+      "tagline": "The Operating System for Understanding Yourself",
+      "description": "A psychology-first self-reflection platform designed to help users track reflections and understand daily patterns. Human OS provides daily logs tracking writing habits, habit entries, and accessing secure reflection archives.",
+      "features": [
+        "Reflective journal workspace ('Write')",
+        "Cognitive analysis mapping ('Understand')",
+        "Encrypted history logs storage ('Vault')",
+        "Interactive milestone reflection ('Timeline')"
+      ],
+      "dataFlow": "Organizes cognitive profile reflections that help structure habit check-ins and personal continuity logs.",
+      "url": "https://human-os-ptot.vercel.app/",
+      "status": "published"
+    },
+    {
+      "id": "future",
+      "name": "Viyaan Future",
+      "tagline": "Private Future-Self Continuity",
+      "description": "Viyaan AI's innovation and continuity platform focused on long-term reflection retention. It explores future-self continuity by allowing users to write reflections and maintain a private, secure timeline that remembers details over time.",
+      "features": [
+        "Secure email-authenticated timeline access",
+        "Private digital future-self continuity diaries",
+        "Long-term memory logs and remembered details",
+        "Theme customization (light/dark adaptive styling)"
+      ],
+      "dataFlow": "Acts as the platform for future-self memory mapping, collecting logs to track personal development over time.",
+      "url": "https://viyaan-future-ai.vercel.app/",
+      "status": "published"
+    }
+  ],
+  "posts": [
+    {
+      "slug": "introducing-joi-companion-ai",
+      "title": "Introducing JOI: An Atmosphere for Supportive Conversation",
+      "date": "June 25, 2026",
+      "category": "Ecosystem Release",
+      "excerpt": "Today we are releasing JOI, our flagship emotional companion. Built with a private-first memory engine and WebGL atmospheric interfaces to support slow, calm, and reflective conversations.",
+      "content": "Intelligence is not purely rational; it is also emotional. Today, we are proud to introduce JOI Companion AI, a WebGL-based conversational experience designed to offer supportive, calm, and private dialogs.\n\nJOI differs from traditional AI systems. Instead of rushing to answer questions or optimize tasks, JOI is built for human presence. Users can toggle between various emotional modes, listen to ambient audio, and express their thoughts without fear of tracking or telemetry.\n\nExplore JOI today at https://joi-ai-wq7f.vercel.app/.",
+      "tags": [
+        "AI",
+        "Supportive",
+        "Release"
+      ],
+      "status": "published",
+      "seoTitle": "Introducing JOI Companion AI — Viyaan AI Blog",
+      "seoDesc": "Read about the release of JOI, an emotionally intelligent companion designed for calm, reflective, and private conversations."
+    }
+  ],
+  "research": [
+    {
+      "slug": "cognitive-architectures-memory",
+      "title": "Long-term Memory Retention in Cognitive Continuity Architectures",
+      "field": "Cognitive Science",
+      "excerpt": "Evaluating performance logs of vector-memory retrieval structures under variable latency and long interval gaps.",
+      "content": "Our team explores architectures that enable machines to keep long-term context without infinite token expense. We evaluate hybrid retrieval models combining vector search, graph links, and decay functions.",
+      "author": "Viyaan Research Team",
+      "date": "April 18, 2026",
+      "status": "published",
+      "pdfUrl": ""
+    }
+  ],
+  "labProjects": [],
+  "careers": {
+    "title": "Connect with Our Mission",
+    "description": "We look for individuals motivated by craft, focus, and long-term values. If you align with our philosophy of building technology that amplifies human potential, we welcome you to join our network.",
+    "linkedinLink": "https://www.linkedin.com/company/viyaan-ai"
+  },
+  "linkedinSync": [
+    {
+      "id": "post-01",
+      "author": "Dharani Kumar",
+      "text": "Excited to share the updated release of our Attendance Intelligence tool! Built in public to help students manage class tracking, analyze risk margins, and map semester forecasting models. Quality over hype, always.",
+      "date": "June 28, 2026",
+      "category": "Innovation Lab",
+      "url": "https://www.linkedin.com/in/dharani-kumar-49622b349",
+      "synced": false
+    }
+  ],
+  "homepage": {
+    "heroHeading": "Intelligence Beyond the Human Mind.",
+    "heroSubheading": "Viyaan AI engineers cognitive architectures, emotional intelligence systems, and future-continuity platforms — built for depth over noise.",
+    "heroCta": "Explore Our Ecosystem",
+    "heroCtaLink": "/products",
+    "heroSecondCta": "Read Research",
+    "heroSecondCtaLink": "/research"
+  },
+  "analytics": {
+    "gaTrackingId": "",
+    "enableAnalytics": false,
+    "cookieConsentEnabled": true,
+    "privacyPolicyUrl": "/privacy"
+  },
+  "newsletter": {
+    "enabled": true,
+    "title": "Stay Ahead of the Intelligence Curve",
+    "description": "Receive research updates, product releases, and insights from Viyaan AI directly in your inbox."
+  }
+}
