@@ -11,6 +11,9 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function ContactPage() {
   const db = await getDb();
   const company = db.companyInfo || {};

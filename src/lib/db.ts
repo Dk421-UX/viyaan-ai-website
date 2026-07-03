@@ -42,9 +42,11 @@ export async function writeLocalDb(data: any) {
 export async function getDb() {
   // If Supabase is not configured or fails, fallback to local file DB
   if (!isSupabaseAdminConfigured || !supabaseAdmin) {
+    console.log("[getDb] Supabase admin not configured. Falling back to local db.json.");
     return getLocalDb();
   }
 
+  console.log("[getDb] Fetching data from Supabase...");
   try {
     // Fetch all tables in parallel to ensure extremely fast render times
     const [
@@ -72,6 +74,12 @@ export async function getDb() {
       supabaseAdmin.from("analytics_settings").select("*").eq("id", "main").single(),
       supabaseAdmin.from("newsletter_settings").select("*").eq("id", "main").single()
     ]);
+
+    if (productsRes.error) {
+      console.error("[getDb] Error querying products table from Supabase:", productsRes.error);
+    } else {
+      console.log(`[getDb] Successfully fetched ${productsRes.data?.length || 0} products from Supabase products table.`);
+    }
 
     // Handle missing tables gracefully (e.g. if the user hasn't run schema.sql yet)
     const hasTableErrors = [

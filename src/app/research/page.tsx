@@ -11,6 +11,9 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function ResearchPage() {
   const db = await getDb();
   const papers = (db.research || []).filter((r: any) => r.status === "published");

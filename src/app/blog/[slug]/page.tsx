@@ -25,6 +25,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function SingleBlogPage({ params }: PageProps) {
   const db = await getDb();
   const post = (db.posts || []).find((p: any) => p.slug === params.slug);

@@ -11,6 +11,9 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function LabPage() {
   const db = await getDb();
   const projects = (db.labProjects || []).filter((p: any) => p.status === "published");

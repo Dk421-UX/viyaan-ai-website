@@ -117,7 +117,8 @@ export async function POST(request: Request) {
             break;
 
           case "saveProduct":
-            await supabaseAdmin.from("products").upsert({
+            console.log("[CMS Admin Save] Initiating product save. Data received:", data);
+            const { error: productUpsertError } = await supabaseAdmin.from("products").upsert({
               id: data.id,
               name: data.name,
               tagline: data.tagline,
@@ -127,6 +128,11 @@ export async function POST(request: Request) {
               url: data.url,
               status: data.status || "published"
             });
+            if (productUpsertError) {
+              console.error("[CMS Database Upsert Error] Failed to upsert product:", productUpsertError);
+              throw productUpsertError;
+            }
+            console.log("[CMS Database Upsert Success] Product saved successfully. ID:", data.id);
             break;
 
           case "savePost":
@@ -225,14 +231,23 @@ export async function POST(request: Request) {
 
           case "deleteItem":
             const { type, id } = data;
+            console.log(`[CMS Admin Delete] Initiating deletion. Type: ${type}, ID: ${id}`);
             if (type === "post") {
-              await supabaseAdmin.from("blogs").delete().eq("slug", id);
+              const { error } = await supabaseAdmin.from("blogs").delete().eq("slug", id);
+              if (error) console.error("[CMS Database Delete Error] Failed to delete blog:", error);
+              else console.log("[CMS Database Delete Success] Blog deleted successfully.");
             } else if (type === "product") {
-              await supabaseAdmin.from("products").delete().eq("id", id);
+              const { error } = await supabaseAdmin.from("products").delete().eq("id", id);
+              if (error) console.error("[CMS Database Delete Error] Failed to delete product:", error);
+              else console.log("[CMS Database Delete Success] Product deleted successfully.");
             } else if (type === "research") {
-              await supabaseAdmin.from("research").delete().eq("slug", id);
+              const { error } = await supabaseAdmin.from("research").delete().eq("slug", id);
+              if (error) console.error("[CMS Database Delete Error] Failed to delete research:", error);
+              else console.log("[CMS Database Delete Success] Research deleted successfully.");
             } else if (type === "lab") {
-              await supabaseAdmin.from("innovation_lab").delete().eq("id", id);
+              const { error } = await supabaseAdmin.from("innovation_lab").delete().eq("id", id);
+              if (error) console.error("[CMS Database Delete Error] Failed to delete lab project:", error);
+              else console.log("[CMS Database Delete Success] Lab project deleted successfully.");
             }
             break;
 

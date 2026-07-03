@@ -22,7 +22,12 @@ CREATE TABLE IF NOT EXISTS public.products (
     data_flow TEXT,
     url TEXT,
     status TEXT NOT NULL DEFAULT 'published',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    icon TEXT,
+    image TEXT,
+    slug TEXT GENERATED ALWAYS AS (id) STORED,
+    title TEXT GENERATED ALWAYS AS (name) STORED
 );
 
 -- 3. RESEARCH TABLE
