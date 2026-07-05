@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { trackNewsletterSuccess, trackNewsletterFailed, trackFormSubmission } from "@/analytics/events";
 
 export default function Footer() {
   const [company, setCompany] = useState<any>(null);
@@ -42,13 +43,27 @@ export default function Footer() {
         setStatus("success");
         setMessage(data.message || "Subscribed successfully.");
         setEmail("");
+        
+        // Track GA4 events
+        trackNewsletterSuccess();
+        trackFormSubmission("success", "newsletter_footer");
       } else {
+        const errorMsg = data.error || "Subscription failed.";
         setStatus("error");
-        setMessage(data.error || "Subscription failed.");
+        setMessage(errorMsg);
+        
+        // Track GA4 events
+        trackNewsletterFailed(errorMsg);
+        trackFormSubmission("failure", "newsletter_footer", errorMsg);
       }
-    } catch (err) {
+    } catch (err: any) {
+      const errorMsg = err.message || "Connection error.";
       setStatus("error");
       setMessage("Connection error. Please try again.");
+      
+      // Track GA4 events
+      trackNewsletterFailed(errorMsg);
+      trackFormSubmission("failure", "newsletter_footer", errorMsg);
     }
   };
 

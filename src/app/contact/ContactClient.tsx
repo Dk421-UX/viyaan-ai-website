@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
+import { trackFormSubmission, trackContactButtonClick } from "@/analytics/events";
 
 interface ContactClientProps {
   company: any;
@@ -34,6 +35,9 @@ export default function ContactClient({ company }: ContactClientProps) {
     setLoading(true);
     setErrorMsg("");
 
+    // Track contact button click
+    trackContactButtonClick("Submit Inquiry");
+
     try {
       const res = await fetch("/api/contact", {
         method: "POST",
@@ -50,12 +54,17 @@ export default function ContactClient({ company }: ContactClientProps) {
 
       if (res.ok) {
         setSubmitted(true);
+        trackFormSubmission("success", "contact_inquiry");
       } else {
         const err = await res.json();
-        setErrorMsg(err.error || "Submission failure. Please try again.");
+        const errStr = err.error || "Submission failure. Please try again.";
+        setErrorMsg(errStr);
+        trackFormSubmission("failure", "contact_inquiry", errStr);
       }
-    } catch (err) {
+    } catch (err: any) {
+      const errStr = err.message || "Connection failure.";
       setErrorMsg("Connection failure. Check your network.");
+      trackFormSubmission("failure", "contact_inquiry", errStr);
     } finally {
       setLoading(false);
     }

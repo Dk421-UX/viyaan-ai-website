@@ -40,11 +40,31 @@ export const metadata: Metadata = {
   }
 };
 
-export default function RootLayout({
+import { getDb } from "@/lib/db";
+import GoogleAnalytics from "@/components/GoogleAnalytics";
+import WebVitalsTracker from "@/components/WebVitalsTracker";
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  let gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "";
+  let cookieConsentEnabled = true;
+
+  try {
+    const db = await getDb();
+    const analytics = db.analytics || {};
+    if (!gaMeasurementId && analytics.gaTrackingId) {
+      gaMeasurementId = analytics.gaTrackingId;
+    }
+    if (analytics.cookieConsentEnabled !== undefined) {
+      cookieConsentEnabled = analytics.cookieConsentEnabled;
+    }
+  } catch (e) {
+    console.error("Error loading layout analytics config:", e);
+  }
+
   return (
     <html
       lang="en"
@@ -52,6 +72,8 @@ export default function RootLayout({
       style={{ colorScheme: "dark" }}
     >
       <body className="min-h-full bg-[#050505] text-zinc-100 flex flex-col font-sans">
+        <GoogleAnalytics measurementId={gaMeasurementId} cookieConsentEnabled={cookieConsentEnabled} />
+        <WebVitalsTracker />
         {children}
       </body>
     </html>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { motion } from "framer-motion";
+import { trackProductCardClick, trackProductDetailsOpened } from "@/analytics/events";
 
 interface ProductsClientProps {
   products: any[];
@@ -173,6 +174,10 @@ export default function ProductsClient({ products }: ProductsClientProps) {
                         href={productUrl}
                         target="_blank"
                         rel="noopener noreferrer"
+                        onClick={() => {
+                          trackProductCardClick(p.id, productName);
+                          trackProductDetailsOpened(p.id, productName);
+                        }}
                         className="inline-flex items-center justify-center w-full h-11 rounded-lg bg-neutral-900 border border-neutral-850 hover:bg-neutral-800 hover:border-neutral-700 text-white font-mono text-xs font-semibold transition-all duration-300 focus-visible:outline-none"
                       >
                         Launch Platform

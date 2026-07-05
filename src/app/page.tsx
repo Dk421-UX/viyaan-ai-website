@@ -81,6 +81,7 @@ export default async function Home() {
             {primaryCta && (
               <Link
                 href={primaryCtaLink}
+                data-cta="hero"
                 className="inline-flex items-center justify-center h-11 px-6 rounded-lg bg-white text-black font-mono text-xs font-semibold hover:bg-neutral-200 transition-colors focus-visible:outline-none"
               >
                 {primaryCta}
@@ -89,6 +90,7 @@ export default async function Home() {
             {secondaryCta && (
               <Link
                 href={secondaryCtaLink}
+                data-cta="hero"
                 className="inline-flex items-center justify-center h-11 px-6 rounded-lg border border-neutral-800 bg-neutral-950/80 hover:bg-neutral-900 text-neutral-300 font-mono text-xs font-semibold hover:border-neutral-700 transition-all focus-visible:outline-none"
               >
                 {secondaryCta}
@@ -126,6 +128,7 @@ export default async function Home() {
               {primaryCta && (
                 <Link
                   href={primaryCtaLink}
+                  data-cta="hero"
                   className="inline-flex items-center justify-center h-10 px-5 rounded-lg bg-white text-black font-mono text-xs font-semibold hover:bg-neutral-200 transition-colors focus-visible:outline-none"
                 >
                   {primaryCta}
@@ -134,6 +137,7 @@ export default async function Home() {
               {secondaryCta && (
                 <Link
                   href={secondaryCtaLink}
+                  data-cta="hero"
                   className="inline-flex items-center justify-center h-10 px-5 rounded-lg border border-neutral-850 bg-neutral-950/80 hover:bg-neutral-900 text-neutral-300 font-mono text-xs font-semibold hover:border-neutral-700 transition-all focus-visible:outline-none"
                 >
                   {secondaryCta}
