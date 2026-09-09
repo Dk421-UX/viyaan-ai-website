@@ -1,7 +1,12 @@
 import crypto from "crypto";
 import fs from "fs/promises";
 import path from "path";
-import { isNeonConfigured, getAdminCredentialsNeon, saveAdminCredentialsNeon } from "./neon";
+import { 
+  isNeonConfigured, 
+  getAdminCredentialsNeon, 
+  saveAdminCredentialsNeon,
+  recordAdminLoginNeon 
+} from "./neon";
 import { isSupabaseAdminConfigured, supabaseAdmin } from "./supabase";
 
 const AUTH_FILE_PATH = path.join(process.cwd(), "src/data/admin_auth.json");
@@ -35,14 +40,20 @@ const RESET_TOKEN_TTL_MS = 15 * 60 * 1000; // 15 minutes
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const MAX_ATTEMPTS = 5;
 
-// Cross-invocation in-memory cache for sliding-window rate limiting
+// Cross-invocation in-memory cache for sliding-window rate limiting & single-use reset tracking
 const globalStore = globalThis as unknown as {
   __viyaan_rate_limits?: Map<string, { count: number; resetAt: number }>;
+  __viyaan_used_reset_tokens?: Set<string>;
+  __viyaan_session_epoch?: number;
 };
 if (!globalStore.__viyaan_rate_limits) {
   globalStore.__viyaan_rate_limits = new Map<string, { count: number; resetAt: number }>();
 }
+if (!globalStore.__viyaan_used_reset_tokens) {
+  globalStore.__viyaan_used_reset_tokens = new Set<string>();
+}
 const rateLimitStore = globalStore.__viyaan_rate_limits;
+const usedResetTokens = globalStore.__viyaan_used_reset_tokens;
 
 // ============================================================================
 // Cryptographic Secret for Stateless Serverless Tokens (HMAC-SHA256)
@@ -105,6 +116,15 @@ export function verifyPassword(
   } else {
     storedHash = storedHashOrRecord || "";
     storedSalt = salt || "";
+  }
+
+  // Parse self-contained encoded scrypt format: "scrypt:<salt>:<hash>"
+  if (typeof storedHash === "string" && storedHash.startsWith("scrypt:")) {
+    const parts = storedHash.split(":");
+    if (parts.length === 3 && parts[1] && parts[2]) {
+      storedSalt = parts[1];
+      storedHash = parts[2];
+    }
   }
 
   // 1. Check legacy plain text match if applicable
@@ -403,6 +423,8 @@ export function validateResetToken(token: string): boolean {
 
     if (!payload || payload.type !== "admin_reset") return false;
     if (typeof payload.exp !== "number" || Date.now() > payload.exp) return false;
+    // Single-use token enforcement: reject if token jti has already been consumed
+    if (payload.jti && usedResetTokens.has(payload.jti)) return false;
 
     return true;
   } catch {
@@ -410,8 +432,24 @@ export function validateResetToken(token: string): boolean {
   }
 }
 
+// Strictly single-use: mark the token as consumed immediately upon use
 export function consumeResetToken(token: string): boolean {
-  return validateResetToken(token);
+  if (!token || typeof token !== "string") return false;
+  const parts = token.split(".");
+  if (parts.length !== 2) return false;
+  
+  if (!validateResetToken(token)) return false;
+
+  try {
+    const json = Buffer.from(parts[0], "base64url").toString("utf-8");
+    const payload = JSON.parse(json);
+    if (payload.jti) {
+      usedResetTokens.add(payload.jti);
+    }
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // ============================================================================
@@ -461,6 +499,11 @@ export function verifySession(token: string | null | undefined): boolean {
     if (!payload || payload.role !== "admin") return false;
     if (typeof payload.exp !== "number" || Date.now() > payload.exp) return false;
 
+    // Check if session was issued prior to a session invalidation epoch
+    if (globalStore.__viyaan_session_epoch && payload.iat < globalStore.__viyaan_session_epoch) {
+      return false;
+    }
+
     return true;
   } catch {
     return false;
@@ -473,7 +516,16 @@ export function destroySession(_token?: string) {
 }
 
 export function destroyAllSessions() {
-  // Stateless tokens can be globally invalidated by rotating ADMIN_SESSION_SECRET or clearing cookies
+  // Invalidate all tokens issued before now by advancing session epoch
+  globalStore.__viyaan_session_epoch = Date.now();
+}
+
+export async function recordAdminLogin() {
+  if (isNeonConfigured) {
+    try {
+      await recordAdminLoginNeon();
+    } catch {}
+  }
 }
 
 // ============================================================================

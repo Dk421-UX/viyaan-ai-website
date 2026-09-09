@@ -308,24 +308,53 @@ async function runMigration() {
     console.log(`   🌱 Seeded newsletter_settings.`);
   }
 
-  // Admins Authentication
-  const adminCount = await sql`SELECT count(*)::int as c FROM admins`;
-  if (adminCount[0].c === 0) {
-    if (authData && authData.passwordHash && authData.salt) {
-      const scryptFormatted = `scrypt:${authData.salt}:${authData.passwordHash}`;
-      await sql`
-        INSERT INTO admins (email, passphrase, password_hash, salt, created_at, updated_at)
-        VALUES ('admin@viyaan.ai', ${scryptFormatted}, ${authData.passwordHash}, ${authData.salt}, NOW(), NOW())
-      `;
-      console.log(`   🌱 Seeded admin authentication with active scrypt credentials.`);
+  // Admin Credentials Authentication
+  try {
+    const credCount = await sql`SELECT count(*)::int as c FROM admin_credentials`;
+    if (credCount[0].c === 0) {
+      // 1. Try to migrate from existing admins table if present
+      let migratedFromAdmins = false;
+      try {
+        const legacyRows = await sql`SELECT * FROM admins LIMIT 1`;
+        if (legacyRows.length > 0) {
+          const l = legacyRows[0];
+          let formattedHash = "";
+          if (l.password_hash && l.salt) {
+            formattedHash = `scrypt:${l.salt}:${l.password_hash}`;
+          } else if (l.passphrase && l.passphrase.startsWith("scrypt:")) {
+            formattedHash = l.passphrase;
+          }
+          if (formattedHash) {
+            await sql`
+              INSERT INTO admin_credentials (id, username, password_hash, created_at, updated_at)
+              VALUES (1, 'admin@viyaan.ai', ${formattedHash}, NOW(), NOW())
+              ON CONFLICT (id) DO UPDATE SET password_hash = EXCLUDED.password_hash, updated_at = NOW()
+            `;
+            console.log(`   🌱 Migrated active scrypt credentials from legacy admins into admin_credentials.`);
+            migratedFromAdmins = true;
+          }
+        }
+      } catch {}
+
+      // 2. If not migrated from legacy table, check snapshot auth data
+      if (!migratedFromAdmins) {
+        if (authData && authData.passwordHash && authData.salt) {
+          const scryptFormatted = `scrypt:${authData.salt}:${authData.passwordHash}`;
+          await sql`
+            INSERT INTO admin_credentials (id, username, password_hash, created_at, updated_at)
+            VALUES (1, 'admin@viyaan.ai', ${scryptFormatted}, NOW(), NOW())
+            ON CONFLICT (id) DO UPDATE SET password_hash = EXCLUDED.password_hash, updated_at = NOW()
+          `;
+          console.log(`   🌱 Seeded admin_credentials with verified scrypt credentials.`);
+        } else {
+          console.log(`   ℹ️ No existing credentials found. Admin password can be set via Administrative Recovery.`);
+        }
+      }
     } else {
-      // Default initial recovery passphrase
-      await sql`
-        INSERT INTO admins (email, passphrase, created_at, updated_at)
-        VALUES ('admin@viyaan.ai', 'viyaan2026', NOW(), NOW())
-      `;
-      console.log(`   🌱 Seeded initial admin record.`);
+      console.log(`   ✅ admin_credentials already populated with secure hash.`);
     }
+  } catch (credErr) {
+    console.warn(`   ⚠️ Notice checking admin_credentials: ${credErr.message}`);
   }
 
   // 5. Verification & Final Table Status
@@ -348,11 +377,10 @@ async function runMigration() {
     "homepage_settings",
     "analytics_settings",
     "newsletter_settings",
-    "admins",
+    "admin_credentials",
     "contact_messages",
     "newsletter_subscribers",
-    "media_library",
-    "linkedin_posts"
+    "media_library"
   ];
 
   let totalRows = 0;

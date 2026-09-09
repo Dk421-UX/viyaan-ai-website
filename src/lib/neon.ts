@@ -606,43 +606,83 @@ export async function deleteMediaRecordNeon(filename: string) {
 // ============================================================================
 export async function getAdminCredentialsNeon() {
   const sql = getNeonSql();
-  const rows = await sql`SELECT * FROM admins LIMIT 1`;
-  if (rows.length === 0) return null;
 
-  const row = rows[0];
-  if (row.password_hash && row.salt) {
-    return {
-      passwordHash: row.password_hash,
-      salt: row.salt,
-      updatedAt: row.updated_at || row.created_at || new Date().toISOString(),
-      version: row.version || 1,
-      source: "neon" as const
-    };
+  // 1. Check dedicated admin_credentials table first
+  try {
+    const credRows = await sql`SELECT * FROM admin_credentials WHERE id = 1 LIMIT 1`;
+    if (credRows.length > 0) {
+      const row = credRows[0];
+      const encoded = row.password_hash || "";
+
+      // Parse scrypt:<salt>:<hash> format
+      if (typeof encoded === "string" && encoded.startsWith("scrypt:")) {
+        const parts = encoded.split(":");
+        if (parts.length === 3 && parts[1] && parts[2]) {
+          return {
+            passwordHash: parts[2],
+            salt: parts[1],
+            updatedAt: row.updated_at || row.created_at || new Date().toISOString(),
+            version: 1,
+            source: "neon" as const
+          };
+        }
+      }
+
+      // If stored with separate hash (or direct hash)
+      return {
+        passwordHash: encoded,
+        salt: "",
+        updatedAt: row.updated_at || row.created_at || new Date().toISOString(),
+        version: 1,
+        source: "neon" as const
+      };
+    }
+  } catch {
+    // Table admin_credentials may not exist yet if awaiting migration
   }
 
-  if (row.passphrase) {
-    if (typeof row.passphrase === "string" && row.passphrase.startsWith("scrypt:")) {
-      const parts = row.passphrase.split(":");
-      if (parts.length === 3 && parts[1] && parts[2]) {
+  // 2. Migration fallback: Check legacy admins table
+  try {
+    const rows = await sql`SELECT * FROM admins LIMIT 1`;
+    if (rows.length > 0) {
+      const row = rows[0];
+      if (row.password_hash && row.salt) {
         return {
-          passwordHash: parts[2],
-          salt: parts[1],
+          passwordHash: row.password_hash,
+          salt: row.salt,
           updatedAt: row.updated_at || row.created_at || new Date().toISOString(),
-          version: 1,
+          version: row.version || 1,
           source: "neon" as const
         };
       }
-    }
 
-    return {
-      passwordHash: "LEGACY_PLAIN",
-      salt: "",
-      updatedAt: row.created_at || new Date().toISOString(),
-      version: 1,
-      source: "neon" as const,
-      isLegacyPlain: true,
-      legacyRaw: row.passphrase
-    };
+      if (row.passphrase) {
+        if (typeof row.passphrase === "string" && row.passphrase.startsWith("scrypt:")) {
+          const parts = row.passphrase.split(":");
+          if (parts.length === 3 && parts[1] && parts[2]) {
+            return {
+              passwordHash: parts[2],
+              salt: parts[1],
+              updatedAt: row.updated_at || row.created_at || new Date().toISOString(),
+              version: 1,
+              source: "neon" as const
+            };
+          }
+        }
+
+        return {
+          passwordHash: "LEGACY_PLAIN",
+          salt: "",
+          updatedAt: row.created_at || new Date().toISOString(),
+          version: 1,
+          source: "neon" as const,
+          isLegacyPlain: true,
+          legacyRaw: row.passphrase
+        };
+      }
+    }
+  } catch {
+    // Both tables checked
   }
 
   return null;
@@ -651,22 +691,46 @@ export async function getAdminCredentialsNeon() {
 export async function saveAdminCredentialsNeon(hash: string, salt: string) {
   const sql = getNeonSql();
   const scryptFormatted = `scrypt:${salt}:${hash}`;
-  const existing = await sql`SELECT id FROM admins LIMIT 1`;
 
-  if (existing.length > 0) {
+  // 1. Primary: Save to admin_credentials table
+  try {
     await sql`
-      UPDATE admins SET
-        passphrase = ${scryptFormatted},
-        password_hash = ${hash},
-        salt = ${salt},
+      INSERT INTO admin_credentials (id, username, password_hash, created_at, updated_at)
+      VALUES (1, 'admin@viyaan.ai', ${scryptFormatted}, NOW(), NOW())
+      ON CONFLICT (id) DO UPDATE SET
+        password_hash = EXCLUDED.password_hash,
         updated_at = NOW()
-      WHERE id = ${existing[0].id}
     `;
-  } else {
-    await sql`
-      INSERT INTO admins (email, passphrase, password_hash, salt, created_at, updated_at)
-      VALUES ('admin@viyaan.ai', ${scryptFormatted}, ${hash}, ${salt}, NOW(), NOW())
-    `;
+  } catch (err) {
+    console.error("[neon] Error saving to admin_credentials table:", err);
   }
+
+  // 2. Compatibility sync: Update legacy admins table if it exists
+  try {
+    const existing = await sql`SELECT id FROM admins LIMIT 1`;
+    if (existing.length > 0) {
+      await sql`
+        UPDATE admins SET
+          passphrase = ${scryptFormatted},
+          password_hash = ${hash},
+          salt = ${salt},
+          updated_at = NOW()
+        WHERE id = ${existing[0].id}
+      `;
+    }
+  } catch {
+    // Legacy table might not exist
+  }
+
   return true;
 }
+
+export async function recordAdminLoginNeon() {
+  try {
+    const sql = getNeonSql();
+    await sql`UPDATE admin_credentials SET last_login_at = NOW() WHERE id = 1`;
+  } catch {
+    // Optional telemetry update
+  }
+}
+

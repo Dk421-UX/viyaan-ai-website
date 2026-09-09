@@ -7,7 +7,8 @@ import {
   createSession,
   getRecoveryKey,
   hashPassword,
-  saveAdminCredentials
+  saveAdminCredentials,
+  recordAdminLogin
 } from "@/lib/auth";
 
 export async function POST(request: Request) {
@@ -71,6 +72,7 @@ export async function POST(request: Request) {
 
     // 5. Successful authentication
     resetRateLimit(`login:${ip}`);
+    recordAdminLogin().catch(() => {});
     const session = createSession();
 
     const response = NextResponse.json({

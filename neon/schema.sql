@@ -1,18 +1,20 @@
--- Viyaan AI — Production PostgreSQL Schema for Neon
+-- =============================================================================
+-- VIYAAN AI — Production PostgreSQL Schema for Neon Serverless PostgreSQL
 -- Compatible with PostgreSQL 15+ / Neon Serverless Postgres
+-- Cleaned of Supabase-specific dependencies (storage.buckets, auth.*, RLS roles)
+-- =============================================================================
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- 1. ADMINS TABLE
-CREATE TABLE IF NOT EXISTS public.admins (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email TEXT UNIQUE NOT NULL,
-    passphrase TEXT NOT NULL DEFAULT 'viyaan2026',
-    password_hash TEXT,
-    salt TEXT,
-    version INT DEFAULT 1,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+-- 1. ADMIN CREDENTIALS TABLE (Secure server-side authentication)
+CREATE TABLE IF NOT EXISTS public.admin_credentials (
+    id INTEGER PRIMARY KEY DEFAULT 1,
+    username TEXT NOT NULL UNIQUE DEFAULT 'admin@viyaan.ai',
+    password_hash TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_login_at TIMESTAMPTZ,
+    CONSTRAINT single_admin CHECK (id = 1)
 );
 
 -- 2. PRODUCTS TABLE
@@ -25,8 +27,8 @@ CREATE TABLE IF NOT EXISTS public.products (
     data_flow TEXT,
     url TEXT,
     status TEXT NOT NULL DEFAULT 'published',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     icon TEXT,
     image TEXT,
     slug TEXT GENERATED ALWAYS AS (id) STORED,
@@ -44,7 +46,7 @@ CREATE TABLE IF NOT EXISTS public.research (
     date TEXT,
     pdf_url TEXT,
     status TEXT NOT NULL DEFAULT 'published',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- 4. INNOVATION LAB TABLE
@@ -56,7 +58,7 @@ CREATE TABLE IF NOT EXISTS public.innovation_lab (
     description TEXT,
     tags TEXT[] DEFAULT '{}'::TEXT[],
     status TEXT NOT NULL DEFAULT 'published',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- 5. BLOGS TABLE
@@ -71,7 +73,7 @@ CREATE TABLE IF NOT EXISTS public.blogs (
     status TEXT NOT NULL DEFAULT 'published',
     seo_title TEXT,
     seo_desc TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- 6. FOUNDER TABLE
@@ -82,7 +84,7 @@ CREATE TABLE IF NOT EXISTS public.founder (
     linkedin TEXT,
     twitter TEXT,
     image_url TEXT,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT single_founder_row CHECK (id = 'only_one')
 );
 
@@ -93,7 +95,7 @@ CREATE TABLE IF NOT EXISTS public.homepage (
     description TEXT,
     cta_text TEXT DEFAULT 'Explore Products',
     cta_url TEXT DEFAULT '/products',
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT single_homepage_row CHECK (id = 'only_one')
 );
 
@@ -110,7 +112,7 @@ CREATE TABLE IF NOT EXISTS public.company_settings (
     twitter_founder TEXT DEFAULT 'https://x.com/by_dharani',
     response_time TEXT DEFAULT '2 business days',
     founder_image TEXT DEFAULT '/founder.jpeg',
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT single_company_row CHECK (id = 'only_one')
 );
 
@@ -128,18 +130,18 @@ CREATE TABLE IF NOT EXISTS public.careers (
     title TEXT,
     description TEXT,
     linkedin_link TEXT DEFAULT 'https://www.linkedin.com/company/viyaan-ai',
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT single_careers_row CHECK (id = 'only_one')
 );
 
--- 11. MEDIA LIBRARY TABLE
+-- 11. MEDIA LIBRARY CATALOG (Catalog of media URLs and metadata)
 CREATE TABLE IF NOT EXISTS public.media_library (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     filename TEXT NOT NULL UNIQUE,
     url TEXT NOT NULL,
     size_bytes BIGINT,
     content_type TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- 12. CONTACT MESSAGES TABLE
@@ -152,22 +154,22 @@ CREATE TABLE IF NOT EXISTS public.contact_messages (
     subject TEXT,
     message TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'unread',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 13. NEWSLETTER TABLE
-CREATE TABLE IF NOT EXISTS public.newsletter (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email TEXT UNIQUE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
--- 14. NEWSLETTER SUBSCRIBERS TABLE
+-- 13. NEWSLETTER SUBSCRIBERS TABLE
 CREATE TABLE IF NOT EXISTS public.newsletter_subscribers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email TEXT UNIQUE NOT NULL,
     name TEXT,
-    subscribed_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+    subscribed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 14. NEWSLETTER TABLE (Legacy subscriber list compatibility)
+CREATE TABLE IF NOT EXISTS public.newsletter (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email TEXT UNIQUE NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- 15. SEO SETTINGS TABLE
@@ -176,7 +178,7 @@ CREATE TABLE IF NOT EXISTS public.seo_settings (
     title TEXT NOT NULL,
     description TEXT,
     og_image TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- 16. HOMEPAGE SETTINGS TABLE
@@ -188,7 +190,7 @@ CREATE TABLE IF NOT EXISTS public.homepage_settings (
     hero_cta_link TEXT DEFAULT '/products',
     hero_second_cta TEXT DEFAULT 'Read Research',
     hero_second_cta_link TEXT DEFAULT '/research',
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT single_homepage_settings_row CHECK (id = 'main')
 );
 
@@ -199,7 +201,7 @@ CREATE TABLE IF NOT EXISTS public.analytics_settings (
     enable_analytics BOOLEAN DEFAULT false,
     cookie_consent_enabled BOOLEAN DEFAULT true,
     privacy_policy_url TEXT DEFAULT '/privacy',
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT single_analytics_row CHECK (id = 'main')
 );
 
@@ -209,11 +211,13 @@ CREATE TABLE IF NOT EXISTS public.newsletter_settings (
     enabled BOOLEAN DEFAULT true,
     title TEXT DEFAULT 'Stay Ahead of the Intelligence Curve',
     description TEXT DEFAULT 'Receive research updates, product releases, and insights from Viyaan AI directly in your inbox.',
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT single_newsletter_settings_row CHECK (id = 'main')
 );
 
--- Indexes for high-performance querying
+-- =============================================================================
+-- PERFORMANCE INDEXES
+-- =============================================================================
 CREATE INDEX IF NOT EXISTS idx_products_status ON public.products(status);
 CREATE INDEX IF NOT EXISTS idx_blogs_status ON public.blogs(status);
 CREATE INDEX IF NOT EXISTS idx_research_status ON public.research(status);
@@ -222,3 +226,4 @@ CREATE INDEX IF NOT EXISTS idx_navigation_sort_order ON public.navigation(sort_o
 CREATE INDEX IF NOT EXISTS idx_contact_status ON public.contact_messages(status);
 CREATE INDEX IF NOT EXISTS idx_contact_created_at ON public.contact_messages(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_subscribers_email ON public.newsletter_subscribers(email);
+CREATE INDEX IF NOT EXISTS idx_media_filename ON public.media_library(filename);
