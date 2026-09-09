@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
+import { 
+  isNeonConfigured, 
+  getMediaLibraryNeon, 
+  deleteMediaRecordNeon 
+} from "@/lib/neon";
 import { supabaseAdmin, isSupabaseAdminConfigured } from "@/lib/supabase";
 import { verifyAdminRequest, getAdminCredentials, verifyPassword } from "@/lib/auth";
 
@@ -12,8 +17,25 @@ const localUploadDir = path.join(process.cwd(), "public", "uploads");
 
 // GET: List all media files
 export async function GET() {
+  // 1. Neon Media List if configured (Primary)
+  if (isNeonConfigured) {
+    try {
+      const records = await getMediaLibraryNeon();
+      if (records) {
+        const mediaFiles = records.map((r: any) => ({
+          name: r.filename,
+          url: r.url,
+          size: r.size_bytes,
+          sha: null
+        }));
+        return NextResponse.json(mediaFiles);
+      }
+    } catch (neonErr) {
+      console.error("[media] Error listing files from Neon:", neonErr);
+    }
+  }
 
-  // 1. Supabase Media List if configured
+  // 2. Supabase Media List fallback
   if (isSupabaseAdminConfigured && supabaseAdmin) {
     try {
       const { data: records, error } = await supabaseAdmin
@@ -30,7 +52,7 @@ export async function GET() {
           name: r.filename,
           url: r.url,
           size: r.size_bytes,
-          sha: null // Not needed for Supabase deletes
+          sha: null
         }));
         return NextResponse.json(mediaFiles);
       }
@@ -39,7 +61,7 @@ export async function GET() {
     }
   }
 
-  // 2. Git-based list fallback if GITHUB credentials exist
+  // 3. Git-based list fallback if GITHUB credentials exist
   if (GITHUB_PAT && GITHUB_REPO) {
     try {
       const url = `https://api.github.com/repos/${GITHUB_REPO}/contents/public/uploads?ref=${GITHUB_BRANCH}`;
@@ -59,7 +81,7 @@ export async function GET() {
               name: f.name,
               url: `/uploads/${f.name}`,
               size: f.size,
-              sha: f.sha // Required for deletion via GitHub API
+              sha: f.sha
             }));
           return NextResponse.json(mediaFiles);
         }
@@ -71,7 +93,7 @@ export async function GET() {
     }
   }
 
-  // 3. Fallback to local FS list
+  // 4. Fallback to local FS list
   try {
     await fs.mkdir(localUploadDir, { recursive: true });
     const fileNames = await fs.readdir(localUploadDir);
@@ -118,19 +140,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Filename is required" }, { status: 400 });
     }
 
-    // 1. Supabase Media Delete if configured
+    // 1. Neon Media Delete if configured (Primary)
+    if (isNeonConfigured) {
+      try {
+        await deleteMediaRecordNeon(filename);
+      } catch (neonErr) {
+        console.error("[media] Neon delete media error:", neonErr);
+      }
+    }
+
+    // 2. Supabase Media Delete if configured (Fallback)
     if (isSupabaseAdminConfigured && supabaseAdmin) {
       try {
-        // Delete from Storage
-        const { error: storageError } = await supabaseAdmin.storage
+        await supabaseAdmin.storage
           .from("media")
           .remove([filename]);
 
-        if (storageError) {
-          throw new Error(`Storage remove error: ${storageError.message}`);
-        }
-
-        // Delete from Database
         await supabaseAdmin
           .from("media_library")
           .delete()
@@ -138,11 +163,11 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ success: true });
       } catch (err: any) {
-        console.error("Supabase media delete error, falling back to local FS:", err);
+        console.error("Supabase media delete error:", err);
       }
     }
 
-    // 2. Try Git-based delete if GITHUB credentials exist
+    // 3. Try Git-based delete if GITHUB credentials exist
     if (GITHUB_PAT && GITHUB_REPO && sha) {
       try {
         const fileRelativePath = `public/uploads/${filename}`;
@@ -175,9 +200,12 @@ export async function POST(request: Request) {
       }
     }
 
-    // 3. Local file delete fallback
-    const filePath = path.join(localUploadDir, filename);
-    await fs.unlink(filePath);
+    // 4. Local file delete fallback
+    try {
+      const filePath = path.join(localUploadDir, filename);
+      await fs.unlink(filePath);
+    } catch {}
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Delete media handler error:", error);

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
+import { isNeonConfigured, insertMediaRecordNeon } from "@/lib/neon";
 import { supabaseAdmin, isSupabaseAdminConfigured } from "@/lib/supabase";
 import { verifyAdminRequest } from "@/lib/auth";
 
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
     const safeName = file.name.replace(/[^a-zA-Z0-9.]/g, "_");
     const filename = `${Date.now()}-${safeName}`;
 
-    // 1. Supabase Storage Upload if configured
+    // 1. Supabase Storage Upload if configured (Fallback)
     if (isSupabaseAdminConfigured && supabaseAdmin) {
       try {
         const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
@@ -38,29 +39,41 @@ export async function POST(request: Request) {
             upsert: true
           });
 
-        if (uploadError) {
-          throw new Error(`Supabase Storage upload error: ${uploadError.message}`);
+        if (!uploadError) {
+          // Get public URL
+          const { data: { publicUrl } } = supabaseAdmin.storage
+            .from("media")
+            .getPublicUrl(filename);
+
+          // Record in media_library table
+          await supabaseAdmin.from("media_library").insert({
+            filename,
+            url: publicUrl,
+            size_bytes: file.size,
+            content_type: file.type
+          });
+
+          // Also record in Neon if configured
+          if (isNeonConfigured) {
+            try {
+              await insertMediaRecordNeon({
+                filename,
+                url: publicUrl,
+                sizeBytes: file.size,
+                contentType: file.type
+              });
+            } catch (neonErr) {
+              console.error("[upload] Neon media record error:", neonErr);
+            }
+          }
+
+          return NextResponse.json({
+            success: true,
+            url: publicUrl
+          });
         }
-
-        // Get public URL
-        const { data: { publicUrl } } = supabaseAdmin.storage
-          .from("media")
-          .getPublicUrl(filename);
-
-        // Record in media_library table
-        await supabaseAdmin.from("media_library").insert({
-          filename,
-          url: publicUrl,
-          size_bytes: file.size,
-          content_type: file.type
-        });
-
-        return NextResponse.json({
-          success: true,
-          url: publicUrl
-        });
       } catch (err: any) {
-        console.error("Supabase file upload error, falling back to local file system:", err);
+        console.error("Supabase file upload error, falling back to Git/FS:", err);
       }
     }
 
@@ -86,9 +99,24 @@ export async function POST(request: Request) {
         });
 
         if (res.ok) {
+          const finalUrl = `/uploads/${filename}`;
+          // Record in Neon if configured
+          if (isNeonConfigured) {
+            try {
+              await insertMediaRecordNeon({
+                filename,
+                url: finalUrl,
+                sizeBytes: file.size,
+                contentType: file.type
+              });
+            } catch (neonErr) {
+              console.error("[upload] Neon media record error:", neonErr);
+            }
+          }
+
           return NextResponse.json({
             success: true,
-            url: `/uploads/${filename}`
+            url: finalUrl
           });
         } else {
           const err = await res.json();
@@ -106,9 +134,25 @@ export async function POST(request: Request) {
     const filePath = path.join(uploadDir, filename);
     await fs.writeFile(filePath, buffer);
 
+    const localUrl = `/uploads/${filename}`;
+
+    // Record in Neon if configured
+    if (isNeonConfigured) {
+      try {
+        await insertMediaRecordNeon({
+          filename,
+          url: localUrl,
+          sizeBytes: file.size,
+          contentType: file.type
+        });
+      } catch (neonErr) {
+        console.error("[upload] Neon media record error:", neonErr);
+      }
+    }
+
     return NextResponse.json({ 
       success: true, 
-      url: `/uploads/${filename}` 
+      url: localUrl 
     });
   } catch (error) {
     console.error("Upload handler error:", error);

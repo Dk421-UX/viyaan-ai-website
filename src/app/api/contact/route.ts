@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
+import { 
+  isNeonConfigured, 
+  getContactMessagesNeon, 
+  insertContactMessageNeon, 
+  updateContactStatusNeon, 
+  deleteContactMessageNeon 
+} from "@/lib/neon";
 import { supabaseAdmin, isSupabaseAdminConfigured } from "@/lib/supabase";
 import { verifyAdminRequest, getAdminCredentials, verifyPassword } from "@/lib/auth";
 
@@ -47,7 +54,17 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized access" }, { status: 401 });
     }
 
-    // 1. Fetch from Supabase if configured
+    // 1. Fetch from Neon PostgreSQL if configured (Primary)
+    if (isNeonConfigured) {
+      try {
+        const records = await getContactMessagesNeon();
+        return NextResponse.json(records);
+      } catch (neonErr) {
+        console.error("[contact] Neon GET messages error:", neonErr);
+      }
+    }
+
+    // 2. Fetch from Supabase fallback if configured
     if (isSupabaseAdminConfigured && supabaseAdmin) {
       const { data: records, error } = await supabaseAdmin
         .from("contact_messages")
@@ -59,7 +76,7 @@ export async function GET(request: Request) {
       }
     }
 
-    // 2. Fetch from local JSON if not configured
+    // 3. Fetch from local JSON if not configured
     const localMessages = await readLocalMessages();
     return NextResponse.json(localMessages);
   } catch (error) {
@@ -70,8 +87,9 @@ export async function GET(request: Request) {
 
 // POST: Submit a new contact message
 export async function POST(request: Request) {
-  if (!isSupabaseAdminConfigured) {
-    return NextResponse.json({ error: "Database configuration is missing" }, { status: 500 });
+  const isDbConfigured = isNeonConfigured || isSupabaseAdminConfigured;
+  if (process.env.NODE_ENV === "production" && !isDbConfigured) {
+    return NextResponse.json({ error: "Production database service is not configured." }, { status: 503 });
   }
 
   try {
@@ -82,7 +100,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Name, email, and message are required" }, { status: 400 });
     }
 
-    // 1. Insert into Supabase if configured
+    // 1. Insert into Neon PostgreSQL if configured (Primary)
+    if (isNeonConfigured) {
+      try {
+        await insertContactMessageNeon({
+          name,
+          email,
+          company,
+          phone,
+          subject,
+          message
+        });
+        return NextResponse.json({ success: true, message: "Inquiry transmitted successfully." });
+      } catch (neonErr: any) {
+        console.error("[contact] Neon contact write error:", neonErr);
+        if (process.env.NODE_ENV === "production") {
+          return NextResponse.json({ error: "Failed to persist contact inquiry." }, { status: 500 });
+        }
+      }
+    }
+
+    // 2. Insert into Supabase if configured (Fallback)
     if (isSupabaseAdminConfigured && supabaseAdmin) {
       const { error } = await supabaseAdmin.from("contact_messages").insert({
         name,
@@ -100,7 +138,7 @@ export async function POST(request: Request) {
       console.error("Supabase contact write failed, writing locally:", error.message);
     }
 
-    // 2. Fallback to local file write
+    // 3. Fallback to local file write (Development only)
     const localMessages = await readLocalMessages();
     const newMsg = {
       id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -143,7 +181,21 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Action: Update status or delete
+    // 1. Neon PostgreSQL update/delete (Primary)
+    if (isNeonConfigured) {
+      try {
+        if (action === "updateStatus") {
+          await updateContactStatusNeon(id, status);
+        } else if (action === "delete") {
+          await deleteContactMessageNeon(id);
+        }
+        return NextResponse.json({ success: true });
+      } catch (neonErr) {
+        console.error("[contact] Neon contact update/delete error:", neonErr);
+      }
+    }
+
+    // 2. Supabase fallback
     if (isSupabaseAdminConfigured && supabaseAdmin) {
       if (action === "updateStatus") {
         await supabaseAdmin.from("contact_messages").update({ status }).eq("id", id);
@@ -153,7 +205,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({ success: true });
     }
 
-    // Fallback: Local JSON edit
+    // 3. Fallback: Local JSON edit
     const localMessages = await readLocalMessages();
     if (action === "updateStatus") {
       const idx = localMessages.findIndex((m: any) => m.id === id);

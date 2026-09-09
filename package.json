@@ -6,9 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "migrate:neon": "node scripts/migrate_to_neon.mjs"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
     "@supabase/supabase-js": "^2.110.0",
     "@types/three": "^0.185.4",
     "framer-motion": "^12.42.2",

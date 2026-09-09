@@ -38,12 +38,12 @@ export async function POST(request: Request) {
     // 3. Retrieve stored credentials from Supabase (or local store in dev)
     const credentials = await getAdminCredentials();
     
-    // Production safety: fail clearly if Supabase is unconfigured in production
+    // Production safety: fail clearly if cloud database is unconfigured in production
     if (!credentials || credentials.unconfigured) {
       const hasRecovery = !!getRecoveryKey();
       return NextResponse.json(
         { 
-          error: "Production database service is not configured. Supabase environment variables are missing in Vercel. Please configure them in your Vercel Project Settings or initialize via Administrative Recovery.",
+          error: "Production database service is not configured. Neon DATABASE_URL is missing in your deployment environment (Vercel / Render / .env.production). Please configure DATABASE_URL or initialize via Administrative Recovery.",
           needsRecovery: hasRecovery,
           unconfigured: true
         },

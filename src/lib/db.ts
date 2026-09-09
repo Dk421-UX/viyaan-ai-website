@@ -1,5 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
+import { isNeonConfigured, getDbFromNeon } from "./neon";
 import { supabaseAdmin, isSupabaseAdminConfigured } from "./supabase";
 
 const dbPath = path.join(process.cwd(), "src/data/db.json");
@@ -40,14 +41,24 @@ export async function writeLocalDb(data: any) {
 }
 
 export async function getDb() {
-  // If Supabase is not configured or fails, fallback to local file DB
-  if (!isSupabaseAdminConfigured || !supabaseAdmin) {
-    console.log("[getDb] Supabase admin not configured. Falling back to local db.json.");
-    return getLocalDb();
+  // 1. Prioritize Neon PostgreSQL (Primary Serverless Production Database)
+  if (isNeonConfigured) {
+    try {
+      console.log("[getDb] Fetching data from Neon PostgreSQL...");
+      const neonData = await getDbFromNeon();
+      return neonData;
+    } catch (neonErr) {
+      console.error("[getDb] Neon PostgreSQL query error:", neonErr);
+      if (process.env.NODE_ENV === "production") {
+        console.warn("[getDb] Production Neon query failed. Checking fallback sources...");
+      }
+    }
   }
 
-  console.log("[getDb] Fetching data from Supabase...");
-  try {
+  // 2. Supabase Fallback (Grace period during migration)
+  if (isSupabaseAdminConfigured && supabaseAdmin) {
+    console.log("[getDb] Fetching data from Supabase fallback...");
+    try {
     // Fetch all tables in parallel to ensure extremely fast render times
     const [
       companyRes,
@@ -167,4 +178,9 @@ export async function getDb() {
     console.error("Supabase fetch failed, using local db.json fallback:", error);
     return getLocalDb();
   }
+}
+
+  // 3. Local Fallback (Development & unconfigured grace period)
+  console.log("[getDb] Cloud database not configured. Falling back to local db.json.");
+  return getLocalDb();
 }

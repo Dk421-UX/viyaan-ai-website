@@ -2,6 +2,24 @@ import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
 import { getDb, writeLocalDb } from "@/lib/db";
+import {
+  isNeonConfigured,
+  updateCompanySettingsNeon,
+  saveNavigationNeon,
+  saveSeoSettingsNeon,
+  saveProductNeon,
+  deleteProductNeon,
+  savePostNeon,
+  deletePostNeon,
+  saveResearchNeon,
+  deleteResearchNeon,
+  saveLabProjectNeon,
+  deleteLabProjectNeon,
+  saveCareersNeon,
+  saveHomepageSettingsNeon,
+  saveAnalyticsSettingsNeon,
+  saveNewsletterSettingsNeon,
+} from "@/lib/neon";
 import { supabaseAdmin, isSupabaseAdminConfigured } from "@/lib/supabase";
 import { runAutoInitialization } from "@/lib/dbInit";
 import { verifyAdminRequest, getAdminCredentials, verifyPassword } from "@/lib/auth";
@@ -56,7 +74,98 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized access" }, { status: 401 });
     }
 
-    // 2. Perform CMS Action in Supabase if configured
+    // 2. Perform CMS Action in Neon PostgreSQL if configured (Primary)
+    if (isNeonConfigured) {
+      try {
+        switch (action) {
+          case "updateSettings":
+            await updateCompanySettingsNeon(data);
+            break;
+
+          case "saveNavigation":
+            await saveNavigationNeon(data);
+            break;
+
+          case "saveSEO":
+            await saveSeoSettingsNeon(data);
+            break;
+
+          case "saveProduct":
+            await saveProductNeon(data);
+            break;
+
+          case "savePost":
+            await savePostNeon(data);
+            break;
+
+          case "saveResearch":
+            await saveResearchNeon(data);
+            break;
+
+          case "saveLabProject":
+            await saveLabProjectNeon(data);
+            break;
+
+          case "saveCareers":
+            await saveCareersNeon(data);
+            break;
+
+          case "saveHomepage":
+            await saveHomepageSettingsNeon(data);
+            break;
+
+          case "saveAnalytics":
+            await saveAnalyticsSettingsNeon(data);
+            break;
+
+          case "saveNewsletterSettings":
+            await saveNewsletterSettingsNeon(data);
+            break;
+
+          case "syncLinkedIn":
+            const newPost = {
+              slug: `linkedin-${data.id}-${Date.now()}`,
+              title: `Update: ${data.author}`,
+              date: data.date,
+              category: data.category || "LinkedIn Sync",
+              excerpt: data.text.substring(0, 120) + "...",
+              content: data.text,
+              tags: ["LinkedIn", "Update"],
+              status: "published",
+              seoTitle: `Viyaan AI News: Update from ${data.author}`,
+              seoDesc: data.text.substring(0, 150)
+            };
+            await savePostNeon(newPost);
+            break;
+
+          case "deleteItem":
+            const { type, id } = data;
+            if (type === "post") {
+              await deletePostNeon(id);
+            } else if (type === "product") {
+              await deleteProductNeon(id);
+            } else if (type === "research") {
+              await deleteResearchNeon(id);
+            } else if (type === "lab") {
+              await deleteLabProjectNeon(id);
+            }
+            break;
+
+          default:
+            return NextResponse.json({ error: "Invalid CMS action" }, { status: 400 });
+        }
+
+        const freshDb = await getDb();
+        return NextResponse.json({ success: true, db: freshDb });
+      } catch (neonError: any) {
+        console.error("[CMS Neon Error] Action write error:", neonError);
+        if (process.env.NODE_ENV === "production" && !isSupabaseAdminConfigured) {
+          return NextResponse.json({ error: "Failed to persist changes in production Neon database." }, { status: 500 });
+        }
+      }
+    }
+
+    // 3. Perform CMS Action in Supabase if configured (Migration Fallback)
     if (isSupabaseAdminConfigured && supabaseAdmin) {
       try {
         switch (action) {
@@ -77,7 +186,6 @@ export async function POST(request: Request) {
             break;
 
           case "saveNavigation":
-            // Delete all existing and write sorted items to handle list sorting/resizing easily
             await supabaseAdmin.from("navigation").delete().neq("id", 0);
             if (data && data.length > 0) {
               const rows = data.map((n: any, idx: number) => ({
@@ -90,7 +198,6 @@ export async function POST(request: Request) {
             break;
 
           case "saveSEO":
-            // Upsert each page's SEO settings
             const seoPromises = Object.entries(data).map(([key, pageSeo]: [string, any]) =>
               supabaseAdmin.from("seo_settings").upsert({
                 page_key: key,
@@ -103,7 +210,6 @@ export async function POST(request: Request) {
             break;
 
           case "saveProduct":
-            console.log("[CMS Admin Save] Initiating product save. Data received:", data);
             const { error: productUpsertError } = await supabaseAdmin.from("products").upsert({
               id: data.id,
               name: data.name,
@@ -115,10 +221,8 @@ export async function POST(request: Request) {
               status: data.status || "published"
             });
             if (productUpsertError) {
-              console.error("[CMS Database Upsert Error] Failed to upsert product:", productUpsertError);
               throw productUpsertError;
             }
-            console.log("[CMS Database Upsert Success] Product saved successfully. ID:", data.id);
             break;
 
           case "savePost":
@@ -194,13 +298,10 @@ export async function POST(request: Request) {
             break;
 
           case "saveNewsletterSettings":
-            // Newsletter settings are stored as a JSON column in company_settings or locally
-            // For local mode we fallback below; for Supabase we update company_settings extra field
-            // since a dedicated table isn't critical here
             break;
 
           case "syncLinkedIn":
-            const newPost = {
+            const sbPost = {
               slug: `linkedin-${data.id}-${Date.now()}`,
               title: `Update: ${data.author}`,
               date: data.date,
@@ -212,28 +313,19 @@ export async function POST(request: Request) {
               seo_title: `Viyaan AI News: Update from ${data.author}`,
               seo_desc: data.text.substring(0, 150)
             };
-            await supabaseAdmin.from("blogs").insert(newPost);
+            await supabaseAdmin.from("blogs").insert(sbPost);
             break;
 
           case "deleteItem":
             const { type, id } = data;
-            console.log(`[CMS Admin Delete] Initiating deletion. Type: ${type}, ID: ${id}`);
             if (type === "post") {
-              const { error } = await supabaseAdmin.from("blogs").delete().eq("slug", id);
-              if (error) console.error("[CMS Database Delete Error] Failed to delete blog:", error);
-              else console.log("[CMS Database Delete Success] Blog deleted successfully.");
+              await supabaseAdmin.from("blogs").delete().eq("slug", id);
             } else if (type === "product") {
-              const { error } = await supabaseAdmin.from("products").delete().eq("id", id);
-              if (error) console.error("[CMS Database Delete Error] Failed to delete product:", error);
-              else console.log("[CMS Database Delete Success] Product deleted successfully.");
+              await supabaseAdmin.from("products").delete().eq("id", id);
             } else if (type === "research") {
-              const { error } = await supabaseAdmin.from("research").delete().eq("slug", id);
-              if (error) console.error("[CMS Database Delete Error] Failed to delete research:", error);
-              else console.log("[CMS Database Delete Success] Research deleted successfully.");
+              await supabaseAdmin.from("research").delete().eq("slug", id);
             } else if (type === "lab") {
-              const { error } = await supabaseAdmin.from("innovation_lab").delete().eq("id", id);
-              if (error) console.error("[CMS Database Delete Error] Failed to delete lab project:", error);
-              else console.log("[CMS Database Delete Success] Lab project deleted successfully.");
+              await supabaseAdmin.from("innovation_lab").delete().eq("id", id);
             }
             break;
 
@@ -248,8 +340,16 @@ export async function POST(request: Request) {
       }
     }
 
-    // 3. Fallback CMS Operation: Local / Git-based DB.json write
-    const localDb = await getDb(); // Gets formatted copy
+    // 4. Production policy check: Fail if production cloud database is missing
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json(
+        { error: "Production database is not configured. Neon DATABASE_URL is missing." },
+        { status: 503 }
+      );
+    }
+
+    // 5. Fallback CMS Operation: Local / Git-based DB.json write (Development only)
+    const localDb = await getDb();
 
     switch (action) {
       case "updateSettings":
@@ -273,13 +373,13 @@ export async function POST(request: Request) {
       case "savePost":
         const postIndex = localDb.posts.findIndex((p: any) => p.slug === data.slug);
         if (postIndex > -1) localDb.posts[postIndex] = data;
-        else localDb.posts.push(data);
+        else localDb.posts.unshift(data);
         break;
 
       case "saveResearch":
         const rIndex = localDb.research.findIndex((r: any) => r.slug === data.slug);
         if (rIndex > -1) localDb.research[rIndex] = data;
-        else localDb.research.push(data);
+        else localDb.research.unshift(data);
         break;
 
       case "saveLabProject":
@@ -293,23 +393,23 @@ export async function POST(request: Request) {
         break;
 
       case "saveHomepage":
-        localDb.homepage = { ...(localDb.homepage || {}), ...data };
+        localDb.homepage = data;
         break;
 
       case "saveAnalytics":
-        localDb.analytics = { ...(localDb.analytics || {}), ...data };
+        localDb.analytics = data;
         break;
 
       case "saveNewsletterSettings":
-        localDb.newsletter = { ...(localDb.newsletter || {}), ...data };
+        localDb.newsletter = data;
         break;
 
       case "syncLinkedIn":
-        const linkedinPost = {
+        const localNewPost = {
           slug: `linkedin-${data.id}-${Date.now()}`,
+          title: `Update: ${data.author}`,
           date: data.date,
           category: data.category || "LinkedIn Sync",
-          title: `Update: ${data.author}`,
           excerpt: data.text.substring(0, 120) + "...",
           content: data.text,
           tags: ["LinkedIn", "Update"],
@@ -317,19 +417,19 @@ export async function POST(request: Request) {
           seoTitle: `Viyaan AI News: Update from ${data.author}`,
           seoDesc: data.text.substring(0, 150)
         };
-        localDb.posts.unshift(linkedinPost);
+        localDb.posts.unshift(localNewPost);
         break;
 
       case "deleteItem":
-        const { type: dType, id: dId } = data;
-        if (dType === "post") {
-          localDb.posts = localDb.posts.filter((p: any) => p.slug !== dId);
-        } else if (dType === "product") {
-          localDb.products = localDb.products.filter((p: any) => p.id !== dId);
-        } else if (dType === "research") {
-          localDb.research = localDb.research.filter((r: any) => r.slug !== dId);
-        } else if (dType === "lab") {
-          localDb.labProjects = localDb.labProjects.filter((l: any) => l.id !== dId);
+        const { type, id } = data;
+        if (type === "post") {
+          localDb.posts = localDb.posts.filter((p: any) => p.slug !== id);
+        } else if (type === "product") {
+          localDb.products = localDb.products.filter((p: any) => p.id !== id);
+        } else if (type === "research") {
+          localDb.research = localDb.research.filter((r: any) => r.slug !== id);
+        } else if (type === "lab") {
+          localDb.labProjects = localDb.labProjects.filter((l: any) => l.id !== id);
         }
         break;
 
@@ -337,15 +437,14 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Invalid CMS action" }, { status: 400 });
     }
 
-    // Write back to db.json (or via Git if GITHUB credentials exist)
-    // If GITHUB config exists, write using route helper
+    // Sync to GitHub if credentials exist
     if (GITHUB_PAT && GITHUB_REPO) {
       try {
-        const fetchUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/src/data/db.json?ref=${GITHUB_BRANCH}`;
-        const res = await fetch(fetchUrl, {
+        const getUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/src/data/db.json?ref=${GITHUB_BRANCH}`;
+        const res = await fetch(getUrl, {
           headers: {
             Authorization: `token ${GITHUB_PAT}`,
-            Accept: "application/vnd.github+json",
+            Accept: "application/vnd.github+json"
           }
         });
         let sha = null;

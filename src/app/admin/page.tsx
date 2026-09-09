@@ -582,8 +582,8 @@ export default function AdminDashboard() {
                   dbHealth.status === "error" ? "bg-red-400" : "bg-neutral-500"
                 }`} />
                 <span>
-                  {dbHealth.status === "production" ? "Production Supabase Connected" :
-                   dbHealth.status === "unconfigured" ? "Vercel: Supabase Unconfigured" :
+                  {dbHealth.status === "production" ? (dbHealth.provider ? `${dbHealth.provider} Connected` : "Production Database Connected") :
+                   dbHealth.status === "unconfigured" ? "Database Unconfigured (Missing DATABASE_URL)" :
                    dbHealth.status === "migration_needed" ? "Database Migration Needed" :
                    dbHealth.status === "error" ? "Database Connection Error" : "Local JSON Mode"}
                 </span>
@@ -863,10 +863,10 @@ export default function AdminDashboard() {
               )}
               <div className="flex-1">
                 <span className="uppercase tracking-widest text-[9px] font-bold mr-2">
-                  {dbHealth.status === "production" ? "SUPABASE CONNECTED" 
+                  {dbHealth.status === "production" ? (dbHealth.provider ? `${dbHealth.provider.toUpperCase()} CONNECTED` : "PRODUCTION DATABASE CONNECTED") 
                     : dbHealth.status === "migration_needed" ? "MIGRATION REQUIRED" 
                     : dbHealth.status === "error" ? "CONNECTION ERROR" 
-                    : dbHealth.status === "unconfigured" ? "VERCEL SUPABASE UNCONFIGURED"
+                    : dbHealth.status === "unconfigured" ? "DATABASE UNCONFIGURED (MISSING DATABASE_URL)"
                     : "LOCAL JSON MODE"}
                 </span>
                 <span className="text-[10px] opacity-80">{dbHealth.message}</span>

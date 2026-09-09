@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
+import { 
+  isNeonConfigured, 
+  getNewsletterSubscribersNeon, 
+  insertNewsletterSubscriberNeon, 
+  deleteNewsletterSubscriberNeon 
+} from "@/lib/neon";
 import { supabaseAdmin, isSupabaseAdminConfigured } from "@/lib/supabase";
 import { verifyAdminRequest, getAdminCredentials, verifyPassword } from "@/lib/auth";
 
@@ -48,6 +54,17 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // 1. Neon PostgreSQL (Primary)
+  if (isNeonConfigured) {
+    try {
+      const records = await getNewsletterSubscribersNeon();
+      return NextResponse.json(records);
+    } catch (neonErr) {
+      console.error("[newsletter] Neon get subscribers error:", neonErr);
+    }
+  }
+
+  // 2. Supabase Fallback
   if (isSupabaseAdminConfigured && supabaseAdmin) {
     const { data, error } = await supabaseAdmin
       .from("newsletter_subscribers")
@@ -59,13 +76,13 @@ export async function GET(request: Request) {
     }
   }
 
+  // 3. Local JSON (Development)
   const local = await readLocalSubscribers();
   return NextResponse.json(local);
 }
 
 // POST: Public subscribe
 export async function POST(request: Request) {
-
   try {
     const body = await request.json();
     const { email, name } = body;
@@ -74,8 +91,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "A valid email address is required." }, { status: 400 });
     }
 
+    // 1. Neon PostgreSQL (Primary)
+    if (isNeonConfigured) {
+      try {
+        await insertNewsletterSubscriberNeon(email, name);
+        return NextResponse.json({ success: true, message: "Subscribed successfully." });
+      } catch (neonErr) {
+        console.error("[newsletter] Neon subscribe error:", neonErr);
+        if (process.env.NODE_ENV === "production") {
+          return NextResponse.json({ error: "Subscription service temporarily unavailable." }, { status: 500 });
+        }
+      }
+    }
+
+    // 2. Supabase Fallback
     if (isSupabaseAdminConfigured && supabaseAdmin) {
-      // Check for duplicate
       const { data: existing } = await supabaseAdmin
         .from("newsletter_subscribers")
         .select("id")
@@ -97,7 +127,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // Fallback: local file
+    // 3. Local fallback
     const subs = await readLocalSubscribers();
     const alreadyExists = subs.some((s: any) => s.email === email);
     if (alreadyExists) {
@@ -118,34 +148,62 @@ export async function POST(request: Request) {
 
 // DELETE: Admin remove subscriber
 export async function DELETE(request: Request) {
+  const isSessionValid = verifyAdminRequest(request);
+  let isCredentialValid = false;
+  const password = resolveAuthHeader(request);
+
+  if (!isSessionValid && password) {
+    const credentials = await getAdminCredentials();
+    if (credentials) {
+      isCredentialValid = verifyPassword(password, credentials.passwordHash, credentials.salt);
+    }
+  }
+
+  if (!isSessionValid && !isCredentialValid) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
-    const body = await request.json();
-    const { id, password } = body;
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+    const email = searchParams.get("email");
 
-    const isSessionValid = verifyAdminRequest(request);
-    let isCredentialValid = false;
+    if (!id && !email) {
+      return NextResponse.json({ error: "Missing identifier" }, { status: 400 });
+    }
 
-    if (!isSessionValid && password) {
-      const credentials = await getAdminCredentials();
-      if (credentials) {
-        isCredentialValid = verifyPassword(password, credentials.passwordHash, credentials.salt);
+    const target = id || email!;
+
+    // 1. Neon PostgreSQL (Primary)
+    if (isNeonConfigured) {
+      try {
+        await deleteNewsletterSubscriberNeon(target);
+        return NextResponse.json({ success: true });
+      } catch (neonErr) {
+        console.error("[newsletter] Neon delete subscriber error:", neonErr);
       }
     }
 
-    if (!isSessionValid && !isCredentialValid) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    // 2. Supabase Fallback
     if (isSupabaseAdminConfigured && supabaseAdmin) {
-      await supabaseAdmin.from("newsletter_subscribers").delete().eq("id", id);
-      return NextResponse.json({ success: true });
+      let query = supabaseAdmin.from("newsletter_subscribers").delete();
+      if (id) {
+        query = query.eq("id", id);
+      } else {
+        query = query.eq("email", email);
+      }
+      const { error } = await query;
+      if (!error) {
+        return NextResponse.json({ success: true });
+      }
     }
 
+    // 3. Local fallback
     const subs = await readLocalSubscribers();
-    const updated = subs.filter((s: any) => s.id !== id);
-    await writeLocalSubscribers(updated);
+    const filtered = subs.filter((s: any) => (id ? s.id !== id : s.email !== email));
+    await writeLocalSubscribers(filtered);
     return NextResponse.json({ success: true });
   } catch (e) {
-    return NextResponse.json({ error: "Delete failed." }, { status: 500 });
+    return NextResponse.json({ error: "Deletion failed." }, { status: 500 });
   }
 }

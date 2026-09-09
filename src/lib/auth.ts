@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import fs from "fs/promises";
 import path from "path";
+import { isNeonConfigured, getAdminCredentialsNeon, saveAdminCredentialsNeon } from "./neon";
 import { isSupabaseAdminConfigured, supabaseAdmin } from "./supabase";
 
 const AUTH_FILE_PATH = path.join(process.cwd(), "src/data/admin_auth.json");
@@ -10,7 +11,7 @@ export interface AdminCredentialRecord {
   salt: string;
   updatedAt: string;
   version: number;
-  source?: "supabase" | "local_fallback";
+  source?: "neon" | "supabase" | "local_fallback";
   isLegacyPlain?: boolean;
   legacyRaw?: string;
   unconfigured?: boolean;
@@ -156,10 +157,22 @@ export function validatePasswordStrength(password: string): { valid: boolean; re
 }
 
 // ============================================================================
-// Credential Persistence (Supabase + Local fallback policy)
+// Credential Persistence (Neon PostgreSQL + Supabase + Local fallback policy)
 // ============================================================================
 export async function getAdminCredentials(): Promise<AdminCredentialRecord | null> {
-  // 1. Query Supabase if configured
+  // 1. Query Neon PostgreSQL if configured (Primary)
+  if (isNeonConfigured) {
+    try {
+      const neonCreds = await getAdminCredentialsNeon();
+      if (neonCreds) {
+        return neonCreds;
+      }
+    } catch (err) {
+      console.error("[auth] Error reading admin credential from Neon:", err);
+    }
+  }
+
+  // 2. Query Supabase if configured (Migration Fallback)
   if (isSupabaseAdminConfigured && supabaseAdmin) {
     try {
       const { data, error } = await supabaseAdmin.from("admins").select("*").limit(1);
@@ -212,10 +225,10 @@ export async function getAdminCredentials(): Promise<AdminCredentialRecord | nul
 
   const isProduction = process.env.NODE_ENV === "production";
 
-  // 2. Production Fallback Policy:
+  // 3. Production Fallback Policy:
   // In production, do NOT silently authenticate against local json files.
   if (isProduction) {
-    console.warn("[auth] Production Supabase database not configured.");
+    console.warn("[auth] Production cloud database (Neon/Supabase) not configured.");
     return {
       passwordHash: "",
       salt: "",
@@ -226,7 +239,7 @@ export async function getAdminCredentials(): Promise<AdminCredentialRecord | nul
     };
   }
 
-  // 3. Local Development Fallback
+  // 4. Local Development Fallback
   try {
     const raw = await fs.readFile(AUTH_FILE_PATH, "utf-8");
     const parsed = JSON.parse(raw);
@@ -245,12 +258,23 @@ export async function saveAdminCredentials(hash: string, salt: string): Promise<
     salt,
     updatedAt: new Date().toISOString(),
     version: 1,
-    source: isSupabaseAdminConfigured ? "supabase" : "local_fallback",
+    source: isNeonConfigured ? "neon" : isSupabaseAdminConfigured ? "supabase" : "local_fallback",
   };
 
-  let savedInSupabase = false;
+  let savedInCloud = false;
 
-  // 1. Sync to Supabase if configured
+  // 1. Sync to Neon PostgreSQL if configured (Primary)
+  if (isNeonConfigured) {
+    try {
+      await saveAdminCredentialsNeon(hash, salt);
+      savedInCloud = true;
+      console.log("[auth] Credentials synced to Neon PostgreSQL successfully.");
+    } catch (neonErr) {
+      console.error("[auth] Error saving credentials to Neon:", neonErr);
+    }
+  }
+
+  // 2. Sync to Supabase if configured (Migration Fallback)
   if (isSupabaseAdminConfigured && supabaseAdmin) {
     try {
       const scryptFormatted = `scrypt:${salt}:${hash}`;
@@ -280,12 +304,12 @@ export async function saveAdminCredentials(hash: string, salt: string): Promise<
             .eq("id", existingId);
 
           if (!fallbackErr) {
-            savedInSupabase = true;
+            savedInCloud = true;
           } else {
             console.error("[auth] Supabase admin update error:", fallbackErr);
           }
         } else {
-          savedInSupabase = true;
+          savedInCloud = true;
         }
       } else {
         // Insert new row if table is empty
@@ -294,7 +318,7 @@ export async function saveAdminCredentials(hash: string, salt: string): Promise<
           passphrase: scryptFormatted
         });
         if (!insertErr) {
-          savedInSupabase = true;
+          savedInCloud = true;
         } else {
           console.error("[auth] Supabase admin insert error:", insertErr);
         }
@@ -313,12 +337,12 @@ export async function saveAdminCredentials(hash: string, salt: string): Promise<
     // Normal and expected on read-only serverless filesystems (e.g., Vercel)
   }
 
-  if (isSupabaseAdminConfigured) {
-    return savedInSupabase;
+  if (isNeonConfigured || isSupabaseAdminConfigured) {
+    return savedInCloud;
   }
 
   // In development, return local save status
-  return savedLocally || savedInSupabase || process.env.NODE_ENV !== "production";
+  return savedLocally || savedInCloud || process.env.NODE_ENV !== "production";
 }
 
 // ============================================================================
