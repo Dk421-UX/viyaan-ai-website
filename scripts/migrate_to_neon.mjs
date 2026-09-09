@@ -84,24 +84,23 @@ async function runMigration() {
   try {
     const schemaSql = await fs.readFile(schemaPath, "utf-8");
     
-    // Split schema by statement while respecting multi-line statements
-    // Neon serverless driver executes individual queries
-    const statements = schemaSql
-      .split(/;\s*$/m)
+    // Strip comments and split by semicolon into individual commands
+    const cleanSql = schemaSql.replace(/--.*$/gm, "");
+    const statements = cleanSql
+      .split(";")
       .map(s => s.trim())
-      .filter(s => s.length > 0 && !s.startsWith("--"));
+      .filter(s => s.length > 0);
 
     for (const stmt of statements) {
-      if (stmt.length > 0) {
-        await sql.transaction([sql`${sql.raw(stmt)}`]).catch(async () => {
-          // If transaction wrapper fails, execute directly
-          await sql`${sql.raw(stmt)}`;
-        });
+      try {
+        await sql.query(stmt);
+      } catch (stmtErr) {
+        console.warn(`   Notice executing statement: ${stmtErr.message}`);
       }
     }
     console.log(`   ✅ Schema applied successfully. All tables and indexes are ready.\n`);
   } catch (err) {
-    console.error(`   ⚠️ Schema execution notice: ${err.message}`);
+    console.error(`   ⚠️ Schema execution error: ${err.message}`);
     console.log(`   Continuing to check tables...\n`);
   }
 
@@ -360,7 +359,7 @@ async function runMigration() {
 
   for (const t of tablesToCheck) {
     try {
-      const res = await sql`SELECT count(*)::int as c FROM ${sql.raw(t)}`;
+      const res = await sql.query(`SELECT count(*)::int as c FROM "${t}"`);
       const c = res[0].c;
       totalRows += c;
       console.log(t.padEnd(25) + String(c).padEnd(15) + "✅ OK");

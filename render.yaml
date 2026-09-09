@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: viyaan-ai-website
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: ADMIN_SESSION_SECRET
+        sync: false
+      - key: ADMIN_RECOVERY_KEY
+        sync: false
