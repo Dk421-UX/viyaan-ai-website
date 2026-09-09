@@ -1,6 +1,7 @@
 {
-  "passwordHash": "4930d3eb7503136a9d82ca42f9d07e3e648c20bdfcee83eff45644697946ed3d51a7317e2800331f2f3da43580f6ac25a47adaf93019fc4f842bba3ccfcf1abd",
-  "salt": "c6ba1e29ce9c0f646c09378c44699b1fadc573006a1145bec17b9fa5e0aa72ef",
-  "updatedAt": "2026-09-09T18:06:57.365Z",
-  "version": 1
+  "passwordHash": "ddedb11e058d0118cce1b546cdc29af2d339273947e840669fe896994f1b4613e5f43e4e77097972896e33b8759af296dd358edeec16702dcfc9f7741bdaf920",
+  "salt": "c5c75df54986a8c3a20689c12975367b2081c6b6bf41e35abe01d5fec569db2d",
+  "updatedAt": "2026-09-09T19:33:26.601Z",
+  "version": 1,
+  "source": "local_fallback"
 }

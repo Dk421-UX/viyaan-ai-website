@@ -1,17 +1,48 @@
 import { NextResponse } from "next/server";
-import { isSupabaseConfigured, isSupabaseAdminConfigured, verifyDbConnection } from "@/lib/supabase";
+import { 
+  isSupabaseConfigured, 
+  isSupabaseAdminConfigured, 
+  verifyDbConnection, 
+  getSupabaseDiagnostics 
+} from "@/lib/supabase";
+import { getRecoveryKey } from "@/lib/auth";
 
 export async function GET() {
-  const adminConfigured = isSupabaseAdminConfigured;
-  const anonConfigured = isSupabaseConfigured;
+  const isProduction = process.env.NODE_ENV === "production";
+  const diagnostics = getSupabaseDiagnostics();
+  const recoveryConfigured = !!getRecoveryKey();
 
-  if (!adminConfigured) {
+  if (!diagnostics.isAdminConfigured) {
+    if (isProduction) {
+      return NextResponse.json({
+        status: "unconfigured",
+        environment: "production",
+        configured: false,
+        connected: false,
+        initialized: false,
+        recoveryConfigured,
+        message: "Production database service is not configured. Supabase environment variables (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY) are missing in Vercel.",
+        diagnostics: {
+          hasSupabaseUrl: diagnostics.hasUrl,
+          hasSupabaseAnonKey: diagnostics.hasAnonKey,
+          hasSupabaseServiceRoleKey: diagnostics.hasServiceRoleKey,
+        }
+      });
+    }
+
     return NextResponse.json({
       status: "local",
+      environment: "development",
       configured: false,
       connected: false,
       initialized: false,
-      message: "Supabase environment variables not configured. Operating in local JSON mode."
+      recoveryConfigured,
+      message: "Development mode: Supabase environment variables not configured. Operating in local JSON mode.",
+      diagnostics: {
+        hasSupabaseUrl: diagnostics.hasUrl,
+        hasSupabaseAnonKey: diagnostics.hasAnonKey,
+        hasSupabaseServiceRoleKey: diagnostics.hasServiceRoleKey,
+      }
     });
   }
 
@@ -20,28 +51,49 @@ export async function GET() {
   if (!dbHealth.connected) {
     return NextResponse.json({
       status: "error",
+      environment: isProduction ? "production" : "development",
       configured: true,
       connected: false,
       initialized: false,
-      message: `Failed to connect to Supabase: ${dbHealth.error}`
+      recoveryConfigured,
+      message: `Failed to connect to Supabase: ${dbHealth.error}`,
+      diagnostics: {
+        hasSupabaseUrl: diagnostics.hasUrl,
+        hasSupabaseAnonKey: diagnostics.hasAnonKey,
+        hasSupabaseServiceRoleKey: diagnostics.hasServiceRoleKey,
+      }
     });
   }
 
   if (!dbHealth.initialized) {
     return NextResponse.json({
       status: "migration_needed",
+      environment: isProduction ? "production" : "development",
       configured: true,
       connected: true,
       initialized: false,
-      message: "Database connected, but tables are not initialized. Please copy the SQL from supabase/schema.sql and run it in the Supabase SQL Editor."
+      recoveryConfigured,
+      message: "Database connected, but tables are not initialized. Please execute supabase/schema.sql in the Supabase SQL Editor.",
+      diagnostics: {
+        hasSupabaseUrl: diagnostics.hasUrl,
+        hasSupabaseAnonKey: diagnostics.hasAnonKey,
+        hasSupabaseServiceRoleKey: diagnostics.hasServiceRoleKey,
+      }
     });
   }
 
   return NextResponse.json({
     status: "production",
+    environment: isProduction ? "production" : "development",
     configured: true,
     connected: true,
     initialized: true,
-    message: "Production Supabase database connected and initialized."
+    recoveryConfigured,
+    message: "Production Supabase database connected and operational.",
+    diagnostics: {
+      hasSupabaseUrl: diagnostics.hasUrl,
+      hasSupabaseAnonKey: diagnostics.hasAnonKey,
+      hasSupabaseServiceRoleKey: diagnostics.hasServiceRoleKey,
+    }
   });
 }

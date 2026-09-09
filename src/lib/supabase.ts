@@ -1,29 +1,42 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// Flexible environment variable resolution (supports standard Vercel integration and custom Next.js prefixes)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SECRET_KEY;
 
 // Check if credentials are provided
 export const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey);
 export const isSupabaseAdminConfigured = !!(supabaseUrl && supabaseServiceKey);
 
+// Safe diagnostic summary (never returns secret values)
+export function getSupabaseDiagnostics() {
+  return {
+    isConfigured: isSupabaseConfigured,
+    isAdminConfigured: isSupabaseAdminConfigured,
+    hasUrl: !!supabaseUrl,
+    hasAnonKey: !!supabaseAnonKey,
+    hasServiceRoleKey: !!supabaseServiceKey,
+    isProduction: process.env.NODE_ENV === "production",
+  };
+}
+
 function createAnonClient(): SupabaseClient {
   if (!supabaseUrl) {
-    throw new Error("Missing env variable: NEXT_PUBLIC_SUPABASE_URL");
+    throw new Error("Missing env variable: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_URL");
   }
   if (!supabaseAnonKey) {
-    throw new Error("Missing env variable: NEXT_PUBLIC_SUPABASE_ANON_KEY");
+    throw new Error("Missing env variable: NEXT_PUBLIC_SUPABASE_ANON_KEY or SUPABASE_ANON_KEY");
   }
   return createClient(supabaseUrl, supabaseAnonKey);
 }
 
 function createAdminClient(): SupabaseClient {
   if (!supabaseUrl) {
-    throw new Error("Missing env variable: NEXT_PUBLIC_SUPABASE_URL");
+    throw new Error("Missing env variable: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_URL");
   }
   if (!supabaseServiceKey) {
-    throw new Error("Missing env variable: SUPABASE_SERVICE_ROLE_KEY");
+    throw new Error("Missing env variable: SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_SERVICE_KEY)");
   }
   return createClient(supabaseUrl, supabaseServiceKey, {
     auth: {
@@ -41,7 +54,7 @@ export const supabase = new Proxy({} as SupabaseClient, {
   get(target, prop, receiver) {
     if (!isSupabaseConfigured) {
       throw new Error(
-        "Supabase client cannot be accessed: NEXT_PUBLIC_SUPABASE_ANON_KEY or NEXT_PUBLIC_SUPABASE_URL environment variables are missing."
+        "Supabase client cannot be accessed: NEXT_PUBLIC_SUPABASE_ANON_KEY / SUPABASE_ANON_KEY or NEXT_PUBLIC_SUPABASE_URL / SUPABASE_URL are missing."
       );
     }
     if (!cachedAnonClient) {
@@ -57,7 +70,7 @@ export const supabaseAdmin = new Proxy({} as SupabaseClient, {
   get(target, prop, receiver) {
     if (!isSupabaseAdminConfigured) {
       throw new Error(
-        "Supabase Admin client cannot be accessed: SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_URL environment variables are missing."
+        "Supabase Admin client cannot be accessed: SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_URL / SUPABASE_URL are missing."
       );
     }
     if (!cachedAdminClient) {
@@ -89,7 +102,8 @@ export async function verifyDbConnection() {
     }
 
     return { connected: true, initialized: true, error: null };
-  } catch (err: any) {
-    return { connected: false, initialized: false, error: err.message || "Database connection error" };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Database connection error";
+    return { connected: false, initialized: false, error: message };
   }
 }

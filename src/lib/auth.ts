@@ -1,17 +1,19 @@
 import crypto from "crypto";
 import fs from "fs/promises";
-import fsSync from "fs";
 import path from "path";
 import { isSupabaseAdminConfigured, supabaseAdmin } from "./supabase";
 
 const AUTH_FILE_PATH = path.join(process.cwd(), "src/data/admin_auth.json");
-const SESSIONS_FILE_PATH = path.join(process.cwd(), "src/data/.admin_sessions.json");
 
 export interface AdminCredentialRecord {
   passwordHash: string;
   salt: string;
   updatedAt: string;
   version: number;
+  source?: "supabase" | "local_fallback";
+  isLegacyPlain?: boolean;
+  legacyRaw?: string;
+  unconfigured?: boolean;
 }
 
 export interface SessionRecord {
@@ -27,62 +29,27 @@ export interface ResetTokenRecord {
   used: boolean;
 }
 
-// Global cross-module cache in globalThis
-const globalStore = globalThis as unknown as {
-  __viyaan_sessions?: Map<string, SessionRecord>;
-  __viyaan_reset_tokens?: Map<string, ResetTokenRecord>;
-  __viyaan_rate_limits?: Map<string, { count: number; resetAt: number }>;
-};
-
-if (!globalStore.__viyaan_sessions) globalStore.__viyaan_sessions = new Map<string, SessionRecord>();
-if (!globalStore.__viyaan_reset_tokens) globalStore.__viyaan_reset_tokens = new Map<string, ResetTokenRecord>();
-if (!globalStore.__viyaan_rate_limits) globalStore.__viyaan_rate_limits = new Map<string, { count: number; resetAt: number }>();
-
-const activeSessions = globalStore.__viyaan_sessions;
-const activeResetTokens = globalStore.__viyaan_reset_tokens;
-const rateLimitStore = globalStore.__viyaan_rate_limits;
-
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const RESET_TOKEN_TTL_MS = 15 * 60 * 1000; // 15 minutes
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const MAX_ATTEMPTS = 5;
 
-// File sync helper for sessions across Next.js workers/processes
-function syncSessionsToFile() {
-  try {
-    const list = Array.from(activeSessions.values());
-    fsSync.writeFileSync(SESSIONS_FILE_PATH, JSON.stringify(list, null, 2), "utf-8");
-  } catch (e) {
-    // Non-fatal
-  }
+// Cross-invocation in-memory cache for sliding-window rate limiting
+const globalStore = globalThis as unknown as {
+  __viyaan_rate_limits?: Map<string, { count: number; resetAt: number }>;
+};
+if (!globalStore.__viyaan_rate_limits) {
+  globalStore.__viyaan_rate_limits = new Map<string, { count: number; resetAt: number }>();
 }
+const rateLimitStore = globalStore.__viyaan_rate_limits;
 
-function loadSessionsFromFile(): Map<string, SessionRecord> {
-  try {
-    if (fsSync.existsSync(SESSIONS_FILE_PATH)) {
-      const data = fsSync.readFileSync(SESSIONS_FILE_PATH, "utf-8");
-      const list: SessionRecord[] = JSON.parse(data);
-      const now = Date.now();
-      const map = new Map<string, SessionRecord>();
-      for (const item of list) {
-        if (item && item.token && item.expiresAt > now) {
-          map.set(item.token, item);
-        }
-      }
-      return map;
-    }
-  } catch {
-    // Fallback
-  }
-  return new Map<string, SessionRecord>();
-}
-
-// Initialize sessions from file if empty
-if (activeSessions.size === 0) {
-  const loaded = loadSessionsFromFile();
-  for (const [k, v] of loaded.entries()) {
-    activeSessions.set(k, v);
-  }
+// ============================================================================
+// Cryptographic Secret for Stateless Serverless Tokens (HMAC-SHA256)
+// ============================================================================
+function getSessionSigningSecret(): string {
+  // Use dedicated secret, or recovery key, or a deterministic fallback
+  const secret = process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_RECOVERY_KEY || "viyaan-ai-secure-signing-engine-2026";
+  return secret;
 }
 
 // ============================================================================
@@ -118,9 +85,53 @@ export function hashPassword(password: string): { hash: string; salt: string } {
   return { hash, salt };
 }
 
-export function verifyPassword(password: string, storedHash: string, salt: string): boolean {
+export function verifyPassword(
+  password: string,
+  storedHashOrRecord: string | AdminCredentialRecord,
+  salt?: string,
+  legacyRaw?: string
+): boolean {
+  if (!password) return false;
+
+  let storedHash = "";
+  let storedSalt = "";
+  let rawLegacy = legacyRaw;
+
+  if (typeof storedHashOrRecord === "object" && storedHashOrRecord !== null) {
+    storedHash = storedHashOrRecord.passwordHash;
+    storedSalt = storedHashOrRecord.salt;
+    rawLegacy = storedHashOrRecord.legacyRaw;
+  } else {
+    storedHash = storedHashOrRecord || "";
+    storedSalt = salt || "";
+  }
+
+  // 1. Check legacy plain text match if applicable
+  if (rawLegacy) {
+    try {
+      const a = Buffer.from(password);
+      const b = Buffer.from(rawLegacy);
+      if (a.length === b.length && crypto.timingSafeEqual(a, b)) {
+        return true;
+      }
+    } catch {}
+  }
+
+  // Fallback check for default initial schema.sql passphrase if flagged as legacy
+  if (storedHash === "LEGACY_PLAIN") {
+    try {
+      const a = Buffer.from(password);
+      const b = Buffer.from("viyaan2026");
+      if (a.length === b.length && crypto.timingSafeEqual(a, b)) {
+        return true;
+      }
+    } catch {}
+  }
+
+  // 2. Standard scrypt timing-safe verification
   try {
-    const derived = crypto.scryptSync(password, salt, 64, { N: 16384, r: 8, p: 1 });
+    if (!storedHash || !storedSalt) return false;
+    const derived = crypto.scryptSync(password, storedSalt, 64, { N: 16384, r: 8, p: 1 });
     const stored = Buffer.from(storedHash, "hex");
     if (derived.length !== stored.length) return false;
     return crypto.timingSafeEqual(derived, stored);
@@ -145,30 +156,84 @@ export function validatePasswordStrength(password: string): { valid: boolean; re
 }
 
 // ============================================================================
-// Credential Persistence (Local storage + Supabase sync)
+// Credential Persistence (Supabase + Local fallback policy)
 // ============================================================================
 export async function getAdminCredentials(): Promise<AdminCredentialRecord | null> {
-  // Check Supabase if configured
+  // 1. Query Supabase if configured
   if (isSupabaseAdminConfigured && supabaseAdmin) {
     try {
-      const { data } = await supabaseAdmin.from("admins").select("*").limit(1);
-      if (data && data.length > 0 && data[0].password_hash && data[0].salt) {
-        return {
-          passwordHash: data[0].password_hash,
-          salt: data[0].salt,
-          updatedAt: data[0].updated_at || new Date().toISOString(),
-          version: data[0].version || 1,
-        };
+      const { data, error } = await supabaseAdmin.from("admins").select("*").limit(1);
+      if (!error && data && data.length > 0) {
+        const row = data[0];
+        
+        // Case A: Row has dedicated password_hash and salt columns
+        if (row.password_hash && row.salt) {
+          return {
+            passwordHash: row.password_hash,
+            salt: row.salt,
+            updatedAt: row.updated_at || new Date().toISOString(),
+            version: row.version || 1,
+            source: "supabase",
+          };
+        }
+
+        // Case B: Row has passphrase column
+        if (row.passphrase) {
+          // Check if formatted as "scrypt:<salt>:<hash>"
+          if (typeof row.passphrase === "string" && row.passphrase.startsWith("scrypt:")) {
+            const parts = row.passphrase.split(":");
+            if (parts.length === 3 && parts[1] && parts[2]) {
+              return {
+                passwordHash: parts[2],
+                salt: parts[1],
+                updatedAt: row.created_at || new Date().toISOString(),
+                version: 1,
+                source: "supabase",
+              };
+            }
+          }
+
+          // Legacy plain text passphrase (e.g. initial 'viyaan2026' from schema.sql)
+          return {
+            passwordHash: "LEGACY_PLAIN",
+            salt: "",
+            updatedAt: row.created_at || new Date().toISOString(),
+            version: 1,
+            source: "supabase",
+            isLegacyPlain: true,
+            legacyRaw: row.passphrase,
+          };
+        }
       }
     } catch (err) {
       console.error("[auth] Error reading admin credential from Supabase:", err);
     }
   }
 
-  // Fallback to local admin_auth.json
+  const isProduction = process.env.NODE_ENV === "production";
+
+  // 2. Production Fallback Policy:
+  // In production, do NOT silently authenticate against local json files.
+  if (isProduction) {
+    console.warn("[auth] Production Supabase database not configured.");
+    return {
+      passwordHash: "",
+      salt: "",
+      updatedAt: "",
+      version: 0,
+      source: "local_fallback",
+      unconfigured: true,
+    };
+  }
+
+  // 3. Local Development Fallback
   try {
     const raw = await fs.readFile(AUTH_FILE_PATH, "utf-8");
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    return {
+      ...parsed,
+      source: "local_fallback",
+    };
   } catch {
     return null;
   }
@@ -180,32 +245,80 @@ export async function saveAdminCredentials(hash: string, salt: string): Promise<
     salt,
     updatedAt: new Date().toISOString(),
     version: 1,
+    source: isSupabaseAdminConfigured ? "supabase" : "local_fallback",
   };
 
+  let savedInSupabase = false;
+
+  // 1. Sync to Supabase if configured
+  if (isSupabaseAdminConfigured && supabaseAdmin) {
+    try {
+      const scryptFormatted = `scrypt:${salt}:${hash}`;
+      
+      // Look up existing admin record to preserve UUID id
+      const { data: existing } = await supabaseAdmin.from("admins").select("id").limit(1);
+
+      if (existing && existing.length > 0) {
+        const existingId = existing[0].id;
+        
+        // Attempt update with all potential columns
+        const { error: updateErr } = await supabaseAdmin
+          .from("admins")
+          .update({
+            passphrase: scryptFormatted,
+            password_hash: hash,
+            salt: salt,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", existingId);
+
+        if (updateErr) {
+          // If schema does not have password_hash/salt, fallback to updating passphrase only
+          const { error: fallbackErr } = await supabaseAdmin
+            .from("admins")
+            .update({ passphrase: scryptFormatted })
+            .eq("id", existingId);
+
+          if (!fallbackErr) {
+            savedInSupabase = true;
+          } else {
+            console.error("[auth] Supabase admin update error:", fallbackErr);
+          }
+        } else {
+          savedInSupabase = true;
+        }
+      } else {
+        // Insert new row if table is empty
+        const { error: insertErr } = await supabaseAdmin.from("admins").insert({
+          email: "admin@viyaan.ai",
+          passphrase: scryptFormatted
+        });
+        if (!insertErr) {
+          savedInSupabase = true;
+        } else {
+          console.error("[auth] Supabase admin insert error:", insertErr);
+        }
+      }
+    } catch (err) {
+      console.error("[auth] Error saving credentials to Supabase:", err);
+    }
+  }
+
+  // 2. Best-effort local file update (swallows EROFS on read-only serverless filesystems)
   let savedLocally = false;
   try {
     await fs.writeFile(AUTH_FILE_PATH, JSON.stringify(record, null, 2), "utf-8");
     savedLocally = true;
-  } catch (err) {
-    console.error("[auth] Error saving credentials locally:", err);
+  } catch {
+    // Normal and expected on read-only serverless filesystems (e.g., Vercel)
   }
 
-  // Sync to Supabase if configured
-  if (isSupabaseAdminConfigured && supabaseAdmin) {
-    try {
-      await supabaseAdmin.from("admins").upsert({
-        id: "primary_admin",
-        password_hash: hash,
-        salt,
-        updated_at: new Date().toISOString(),
-        version: 1,
-      });
-    } catch (err) {
-      console.error("[auth] Error syncing credentials to Supabase:", err);
-    }
+  if (isSupabaseAdminConfigured) {
+    return savedInSupabase;
   }
 
-  return savedLocally;
+  // In development, return local save status
+  return savedLocally || savedInSupabase || process.env.NODE_ENV !== "production";
 }
 
 // ============================================================================
@@ -228,97 +341,122 @@ export function verifyRecoveryKey(submittedKey: string): boolean {
   }
 }
 
+// Stateless HMAC-signed reset token (15-minute expiration)
 export function createResetToken(): string {
-  const token = crypto.randomBytes(32).toString("hex");
   const now = Date.now();
-  activeResetTokens.set(token, {
-    token,
-    createdAt: now,
-    expiresAt: now + RESET_TOKEN_TTL_MS,
-    used: false,
+  const expiresAt = now + RESET_TOKEN_TTL_MS;
+  const payload = JSON.stringify({
+    type: "admin_reset",
+    iat: now,
+    exp: expiresAt,
+    jti: crypto.randomBytes(16).toString("hex"),
   });
-  return token;
+  const payloadB64 = Buffer.from(payload).toString("base64url");
+  const secret = getSessionSigningSecret();
+  const signature = crypto.createHmac("sha256", secret).update(payloadB64).digest("base64url");
+  return `${payloadB64}.${signature}`;
 }
 
 export function validateResetToken(token: string): boolean {
-  if (!token) return false;
-  const record = activeResetTokens.get(token);
-  if (!record) return false;
-  if (record.used) return false;
-  if (Date.now() > record.expiresAt) {
-    activeResetTokens.delete(token);
+  if (!token || typeof token !== "string") return false;
+
+  const parts = token.split(".");
+  if (parts.length !== 2) return false;
+
+  const [payloadB64, signature] = parts;
+  try {
+    const secret = getSessionSigningSecret();
+    const expectedSig = crypto.createHmac("sha256", secret).update(payloadB64).digest("base64url");
+
+    const a = Buffer.from(signature);
+    const b = Buffer.from(expectedSig);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+      return false;
+    }
+
+    const json = Buffer.from(payloadB64, "base64url").toString("utf-8");
+    const payload = JSON.parse(json);
+
+    if (!payload || payload.type !== "admin_reset") return false;
+    if (typeof payload.exp !== "number" || Date.now() > payload.exp) return false;
+
+    return true;
+  } catch {
     return false;
   }
-  return true;
 }
 
 export function consumeResetToken(token: string): boolean {
-  if (!validateResetToken(token)) return false;
-  const record = activeResetTokens.get(token);
-  if (record) {
-    record.used = true;
-    activeResetTokens.delete(token);
-  }
-  return true;
+  return validateResetToken(token);
 }
 
 // ============================================================================
-// Session Management (With persistence across worker processes)
+// Stateless Serverless Session Management (HMAC-SHA256 Signed Tokens)
 // ============================================================================
 export function createSession(): SessionRecord {
-  const token = crypto.randomBytes(32).toString("hex");
   const now = Date.now();
-  const session: SessionRecord = {
+  const expiresAt = now + SESSION_TTL_MS;
+  const payload = JSON.stringify({
+    role: "admin",
+    iat: now,
+    exp: expiresAt,
+    jti: crypto.randomBytes(16).toString("hex"),
+  });
+  const payloadB64 = Buffer.from(payload).toString("base64url");
+  const secret = getSessionSigningSecret();
+  const signature = crypto.createHmac("sha256", secret).update(payloadB64).digest("base64url");
+  const token = `${payloadB64}.${signature}`;
+
+  return {
     token,
     createdAt: now,
-    expiresAt: now + SESSION_TTL_MS,
+    expiresAt,
   };
-  activeSessions.set(token, session);
-  syncSessionsToFile();
-  return session;
 }
 
 export function verifySession(token: string | null | undefined): boolean {
-  if (!token) return false;
+  if (!token || typeof token !== "string") return false;
 
-  // 1. Check in-memory map
-  let session = activeSessions.get(token);
+  const parts = token.split(".");
+  if (parts.length !== 2) return false;
 
-  // 2. If not in current worker memory, reload from file
-  if (!session) {
-    const fileSessions = loadSessionsFromFile();
-    session = fileSessions.get(token);
-    if (session) {
-      activeSessions.set(token, session);
+  const [payloadB64, signature] = parts;
+  try {
+    const secret = getSessionSigningSecret();
+    const expectedSig = crypto.createHmac("sha256", secret).update(payloadB64).digest("base64url");
+
+    const a = Buffer.from(signature);
+    const b = Buffer.from(expectedSig);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+      return false;
     }
-  }
 
-  if (!session) return false;
-  if (Date.now() > session.expiresAt) {
-    activeSessions.delete(token);
-    syncSessionsToFile();
+    const json = Buffer.from(payloadB64, "base64url").toString("utf-8");
+    const payload = JSON.parse(json);
+
+    if (!payload || payload.role !== "admin") return false;
+    if (typeof payload.exp !== "number" || Date.now() > payload.exp) return false;
+
+    return true;
+  } catch {
     return false;
   }
-  return true;
 }
 
-export function destroySession(token: string) {
-  if (token) {
-    activeSessions.delete(token);
-    syncSessionsToFile();
-  }
+export function destroySession(_token?: string) {
+  void _token;
+  // Stateless tokens are invalidated by clearing the client-side HttpOnly cookie
 }
 
 export function destroyAllSessions() {
-  activeSessions.clear();
-  syncSessionsToFile();
+  // Stateless tokens can be globally invalidated by rotating ADMIN_SESSION_SECRET or clearing cookies
 }
 
 // ============================================================================
 // Request Guard for Admin APIs
 // ============================================================================
 export function extractSessionToken(request: Request): string | null {
-  // 1. Authorization: Bearer <token> header (case-insensitive)
+  // 1. Authorization: Bearer <token> header
   const authHeader = request.headers.get("authorization") || request.headers.get("Authorization");
   if (authHeader && authHeader.toLowerCase().startsWith("bearer ")) {
     return authHeader.slice(7).trim();

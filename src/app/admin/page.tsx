@@ -564,6 +564,31 @@ export default function AdminDashboard() {
             </div>
             <h1 className="font-display font-semibold text-lg text-white">Viyaan AI CMS Portal</h1>
             <p className="text-[10px] text-neutral-400 font-mono tracking-wider">AUTHORIZED ADMINISTRATORS ONLY</p>
+            {dbHealth && (
+              <div className={`px-2.5 py-1 rounded-full text-[9px] font-mono border flex items-center gap-1.5 ${
+                dbHealth.status === "production"
+                  ? "bg-emerald-950/40 border-emerald-900/50 text-emerald-400"
+                  : dbHealth.status === "unconfigured"
+                  ? "bg-amber-950/40 border-amber-900/50 text-amber-300"
+                  : dbHealth.status === "migration_needed"
+                  ? "bg-blue-950/40 border-blue-900/50 text-blue-300"
+                  : dbHealth.status === "error"
+                  ? "bg-red-950/40 border-red-900/50 text-red-400"
+                  : "bg-neutral-900 border-neutral-800 text-neutral-400"
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${
+                  dbHealth.status === "production" ? "bg-emerald-400" :
+                  dbHealth.status === "unconfigured" ? "bg-amber-400" :
+                  dbHealth.status === "error" ? "bg-red-400" : "bg-neutral-500"
+                }`} />
+                <span>
+                  {dbHealth.status === "production" ? "Production Supabase Connected" :
+                   dbHealth.status === "unconfigured" ? "Vercel: Supabase Unconfigured" :
+                   dbHealth.status === "migration_needed" ? "Database Migration Needed" :
+                   dbHealth.status === "error" ? "Database Connection Error" : "Local JSON Mode"}
+                </span>
+              </div>
+            )}
           </div>
 
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
@@ -818,9 +843,11 @@ export default function AdminDashboard() {
               dbHealth.status === "production"
                 ? "bg-emerald-950/30 border-emerald-900/50 text-emerald-400"
                 : dbHealth.status === "migration_needed"
-                ? "bg-amber-950/30 border-amber-900/50 text-amber-400"
+                ? "bg-blue-950/30 border-blue-900/50 text-blue-300"
                 : dbHealth.status === "error"
                 ? "bg-red-950/30 border-red-900/50 text-red-400"
+                : dbHealth.status === "unconfigured"
+                ? "bg-amber-950/30 border-amber-900/50 text-amber-300"
                 : "bg-neutral-900/60 border-neutral-800 text-neutral-400"
             }`}>
               {dbHealth.status === "production" ? (
@@ -829,6 +856,8 @@ export default function AdminDashboard() {
                 <Database className="w-4 h-4 flex-shrink-0" />
               ) : dbHealth.status === "error" ? (
                 <ServerCrash className="w-4 h-4 flex-shrink-0" />
+              ) : dbHealth.status === "unconfigured" ? (
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
               ) : (
                 <WifiOff className="w-4 h-4 flex-shrink-0" />
               )}
@@ -837,6 +866,7 @@ export default function AdminDashboard() {
                   {dbHealth.status === "production" ? "SUPABASE CONNECTED" 
                     : dbHealth.status === "migration_needed" ? "MIGRATION REQUIRED" 
                     : dbHealth.status === "error" ? "CONNECTION ERROR" 
+                    : dbHealth.status === "unconfigured" ? "VERCEL SUPABASE UNCONFIGURED"
                     : "LOCAL JSON MODE"}
                 </span>
                 <span className="text-[10px] opacity-80">{dbHealth.message}</span>

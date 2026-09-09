@@ -4,7 +4,10 @@ import {
   resetRateLimit, 
   getAdminCredentials, 
   verifyPassword, 
-  createSession 
+  createSession,
+  getRecoveryKey,
+  hashPassword,
+  saveAdminCredentials
 } from "@/lib/auth";
 
 export async function POST(request: Request) {
@@ -32,22 +35,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });
     }
 
-    // 3. Retrieve stored hashed credentials
+    // 3. Retrieve stored credentials from Supabase (or local store in dev)
     const credentials = await getAdminCredentials();
-    if (!credentials) {
+    
+    // Production safety: fail clearly if Supabase is unconfigured in production
+    if (!credentials || credentials.unconfigured) {
+      const hasRecovery = !!getRecoveryKey();
       return NextResponse.json(
         { 
-          error: "Admin credentials not configured. Please use administrative recovery to initialize your passphrase.",
-          needsRecovery: true 
+          error: "Production database service is not configured. Supabase environment variables are missing in Vercel. Please configure them in your Vercel Project Settings or initialize via Administrative Recovery.",
+          needsRecovery: hasRecovery,
+          unconfigured: true
         },
-        { status: 401 }
+        { status: 503 }
       );
     }
 
-    // 4. Timing-safe password verification
-    const isValid = verifyPassword(password, credentials.passwordHash, credentials.salt);
+    // 4. Timing-safe password verification (supports scrypt and legacy plain text with auto-upgrade)
+    const isValid = verifyPassword(password, credentials.passwordHash, credentials.salt, credentials.legacyRaw);
     if (!isValid) {
       return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });
+    }
+
+    // Automatic migration: If verified via legacy plain text, immediately upgrade to scrypt hash
+    if (credentials.isLegacyPlain) {
+      try {
+        const { hash, salt } = hashPassword(password);
+        saveAdminCredentials(hash, salt).catch((e) => {
+          console.error("[auth-login] Background password migration error:", e);
+        });
+      } catch (migrationErr) {
+        console.error("[auth-login] Migration error:", migrationErr);
+      }
     }
 
     // 5. Successful authentication
