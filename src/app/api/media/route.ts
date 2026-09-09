@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
 import { supabaseAdmin, isSupabaseAdminConfigured } from "@/lib/supabase";
+import { verifyAdminRequest, getAdminCredentials, verifyPassword } from "@/lib/auth";
 
 const GITHUB_PAT = process.env.GITHUB_PAT;
 const GITHUB_REPO = process.env.GITHUB_REPO;
@@ -11,9 +12,6 @@ const localUploadDir = path.join(process.cwd(), "public", "uploads");
 
 // GET: List all media files
 export async function GET() {
-  if (!isSupabaseAdminConfigured) {
-    return NextResponse.json({ error: "Database configuration is missing" }, { status: 500 });
-  }
 
   // 1. Supabase Media List if configured
   if (isSupabaseAdminConfigured && supabaseAdmin) {
@@ -98,31 +96,21 @@ export async function GET() {
 
 // POST/DELETE: Delete a media file
 export async function POST(request: Request) {
-  if (!isSupabaseAdminConfigured) {
-    return NextResponse.json({ error: "Database configuration is missing" }, { status: 500 });
-  }
-
   try {
     const body = await request.json();
     const { filename, sha, password } = body;
 
-    // Resolve authenticated passphrase
-    let validPassphrase = "viyaan2026";
-    if (isSupabaseAdminConfigured && supabaseAdmin) {
-      try {
-        const { data: adminRecord } = await supabaseAdmin
-          .from("admins")
-          .select("passphrase")
-          .limit(1);
-        if (adminRecord && adminRecord.length > 0) {
-          validPassphrase = adminRecord[0].passphrase;
-        }
-      } catch (err) {
-        console.error("Error retrieving password from database:", err);
+    const isSessionValid = verifyAdminRequest(request);
+    let isCredentialValid = false;
+
+    if (!isSessionValid && password) {
+      const credentials = await getAdminCredentials();
+      if (credentials) {
+        isCredentialValid = verifyPassword(password, credentials.passwordHash, credentials.salt);
       }
     }
 
-    if (password !== validPassphrase && password !== "viyaan2026") {
+    if (!isSessionValid && !isCredentialValid) {
       return NextResponse.json({ error: "Unauthorized access" }, { status: 401 });
     }
 

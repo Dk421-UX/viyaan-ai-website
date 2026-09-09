@@ -117,27 +117,31 @@ export async function getDb() {
       });
     }
 
+    const localFallback = await getLocalDb();
+
     // Construct the standard database shape that pages expect
     return {
-      companyInfo: companyRes.data || {},
-      navigation: navRes.data || [],
-      seo: seoSettings,
-      products: productsRes.data || [],
-      posts: (blogsRes.data || []).map((b: any) => ({
-        slug: b.slug,
-        title: b.title,
-        date: b.date,
-        category: b.category,
-        excerpt: b.excerpt,
-        content: b.content,
-        tags: b.tags,
-        status: b.status,
-        seoTitle: b.seo_title,
-        seoDesc: b.seo_desc
-      })),
-      research: researchRes.data || [],
-      labProjects: labRes.data || [],
-      careers: careersRes.data || {},
+      companyInfo: companyRes.data || localFallback.companyInfo || {},
+      navigation: (navRes.data && navRes.data.length > 0) ? navRes.data : localFallback.navigation || [],
+      seo: Object.keys(seoSettings).length > 0 ? seoSettings : localFallback.seo || {},
+      products: (productsRes.data && productsRes.data.length > 0) ? productsRes.data : localFallback.products || [],
+      posts: (blogsRes.data && blogsRes.data.length > 0)
+        ? blogsRes.data.map((b: any) => ({
+            slug: b.slug,
+            title: b.title,
+            date: b.date,
+            category: b.category,
+            excerpt: b.excerpt,
+            content: b.content,
+            tags: b.tags,
+            status: b.status,
+            seoTitle: b.seo_title,
+            seoDesc: b.seo_desc
+          }))
+        : localFallback.posts || [],
+      research: (researchRes.data && researchRes.data.length > 0) ? researchRes.data : localFallback.research || [],
+      labProjects: (labRes.data && labRes.data.length > 0) ? labRes.data : localFallback.labProjects || [],
+      careers: careersRes.data || localFallback.careers || {},
       homepage: homepageSettingsRes.data ? {
         heroHeading: homepageSettingsRes.data.hero_heading,
         heroSubheading: homepageSettingsRes.data.hero_subheading,

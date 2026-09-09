@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
 import { supabaseAdmin, isSupabaseAdminConfigured } from "@/lib/supabase";
+import { verifyAdminRequest, getAdminCredentials, verifyPassword } from "@/lib/auth";
 
 const messagesJsonPath = path.join(process.cwd(), "src/data/contact_messages.json");
 
@@ -29,31 +30,20 @@ async function writeLocalMessages(messages: any[]) {
 }
 
 export async function GET(request: Request) {
-  if (!isSupabaseAdminConfigured) {
-    return NextResponse.json({ error: "Database configuration is missing" }, { status: 500 });
-  }
-
   try {
+    const isSessionValid = verifyAdminRequest(request);
+    let isCredentialValid = false;
     const url = new URL(request.url);
     const password = url.searchParams.get("password");
 
-    // Resolve authenticated passphrase
-    let validPassphrase = "viyaan2026";
-    if (isSupabaseAdminConfigured && supabaseAdmin) {
-      try {
-        const { data: adminRecord } = await supabaseAdmin
-          .from("admins")
-          .select("passphrase")
-          .limit(1);
-        if (adminRecord && adminRecord.length > 0) {
-          validPassphrase = adminRecord[0].passphrase;
-        }
-      } catch (err) {
-        console.error("Error retrieving password from database:", err);
+    if (!isSessionValid && password) {
+      const credentials = await getAdminCredentials();
+      if (credentials) {
+        isCredentialValid = verifyPassword(password, credentials.passwordHash, credentials.salt);
       }
     }
 
-    if (password !== validPassphrase && password !== "viyaan2026") {
+    if (!isSessionValid && !isCredentialValid) {
       return NextResponse.json({ error: "Unauthorized access" }, { status: 401 });
     }
 
@@ -135,31 +125,21 @@ export async function POST(request: Request) {
 
 // PATCH/DELETE: Manage contact messages (Admin only)
 export async function PUT(request: Request) {
-  if (!isSupabaseAdminConfigured) {
-    return NextResponse.json({ error: "Database configuration is missing" }, { status: 500 });
-  }
-
   try {
     const body = await request.json();
     const { action, id, status, password } = body;
 
-    // Resolve authenticated passphrase
-    let validPassphrase = "viyaan2026";
-    if (isSupabaseAdminConfigured && supabaseAdmin) {
-      try {
-        const { data: adminRecord } = await supabaseAdmin
-          .from("admins")
-          .select("passphrase")
-          .limit(1);
-        if (adminRecord && adminRecord.length > 0) {
-          validPassphrase = adminRecord[0].passphrase;
-        }
-      } catch (err) {
-        console.error("Error retrieving password from database:", err);
+    const isSessionValid = verifyAdminRequest(request);
+    let isCredentialValid = false;
+
+    if (!isSessionValid && password) {
+      const credentials = await getAdminCredentials();
+      if (credentials) {
+        isCredentialValid = verifyPassword(password, credentials.passwordHash, credentials.salt);
       }
     }
 
-    if (password !== validPassphrase && password !== "viyaan2026") {
+    if (!isSessionValid && !isCredentialValid) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

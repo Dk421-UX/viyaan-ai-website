@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
 import { supabaseAdmin, isSupabaseAdminConfigured } from "@/lib/supabase";
+import { verifyAdminRequest, getAdminCredentials, verifyPassword } from "@/lib/auth";
 
 const subscribersJsonPath = path.join(process.cwd(), "src/data/newsletter_subscribers.json");
 
@@ -32,14 +33,18 @@ function resolveAuthHeader(request: Request) {
 
 // GET: Admin list subscribers
 export async function GET(request: Request) {
-  if (!isSupabaseAdminConfigured) {
-    return NextResponse.json({ error: "Database configuration is missing" }, { status: 500 });
+  const isSessionValid = verifyAdminRequest(request);
+  let isCredentialValid = false;
+  const password = resolveAuthHeader(request);
+
+  if (!isSessionValid && password) {
+    const credentials = await getAdminCredentials();
+    if (credentials) {
+      isCredentialValid = verifyPassword(password, credentials.passwordHash, credentials.salt);
+    }
   }
 
-  const password = resolveAuthHeader(request);
-  const validPassphrase = "viyaan2026";
-
-  if (password !== validPassphrase) {
+  if (!isSessionValid && !isCredentialValid) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -60,9 +65,6 @@ export async function GET(request: Request) {
 
 // POST: Public subscribe
 export async function POST(request: Request) {
-  if (!isSupabaseAdminConfigured) {
-    return NextResponse.json({ error: "Database configuration is missing" }, { status: 500 });
-  }
 
   try {
     const body = await request.json();
@@ -116,15 +118,21 @@ export async function POST(request: Request) {
 
 // DELETE: Admin remove subscriber
 export async function DELETE(request: Request) {
-  if (!isSupabaseAdminConfigured) {
-    return NextResponse.json({ error: "Database configuration is missing" }, { status: 500 });
-  }
-
   try {
     const body = await request.json();
     const { id, password } = body;
 
-    if (password !== "viyaan2026") {
+    const isSessionValid = verifyAdminRequest(request);
+    let isCredentialValid = false;
+
+    if (!isSessionValid && password) {
+      const credentials = await getAdminCredentials();
+      if (credentials) {
+        isCredentialValid = verifyPassword(password, credentials.passwordHash, credentials.salt);
+      }
+    }
+
+    if (!isSessionValid && !isCredentialValid) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

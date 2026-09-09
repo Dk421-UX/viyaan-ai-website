@@ -16,7 +16,10 @@ export const revalidate = 0;
 
 export default async function ResearchPage() {
   const db = await getDb();
-  const papers = (db.research || []).filter((r: any) => r.status === "published");
+  let papers = (db.research || []).filter((r: any) => r.status?.toLowerCase() === "published");
+  if (papers.length === 0 && (db.research || []).length > 0) {
+    papers = db.research;
+  }
 
   return <ResearchClient papers={papers} />;
 }

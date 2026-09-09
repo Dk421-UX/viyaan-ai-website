@@ -2,14 +2,15 @@ import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
 import { supabaseAdmin, isSupabaseAdminConfigured } from "@/lib/supabase";
+import { verifyAdminRequest } from "@/lib/auth";
 
 const GITHUB_PAT = process.env.GITHUB_PAT;
 const GITHUB_REPO = process.env.GITHUB_REPO;
 const GITHUB_BRANCH = process.env.GITHUB_BRANCH || "main";
 
 export async function POST(request: Request) {
-  if (!isSupabaseAdminConfigured) {
-    return NextResponse.json({ error: "Database configuration is missing" }, { status: 500 });
+  if (!verifyAdminRequest(request)) {
+    return NextResponse.json({ error: "Unauthorized access" }, { status: 401 });
   }
 
   try {

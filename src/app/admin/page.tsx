@@ -42,6 +42,17 @@ export default function AdminDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+
+  // Administrative Recovery & Reset states
+  const [showRecoveryModal, setShowRecoveryModal] = useState(false);
+  const [recoveryStep, setRecoveryStep] = useState<"key" | "reset" | "success">("key");
+  const [recoveryKey, setRecoveryKey] = useState("");
+  const [resetToken, setResetToken] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [recoveryError, setRecoveryError] = useState("");
+  const [recoveryLoading, setRecoveryLoading] = useState(false);
   
   const [activeTab, setActiveTab] = useState("settings");
   const [db, setDb] = useState<any>(null);
@@ -145,12 +156,23 @@ export default function AdminDashboard() {
     }
   };
 
-  const fetchContacts = async (pass = password) => {
+  const getAuthHeaders = (isJson = true) => {
+    const token = typeof window !== "undefined" ? sessionStorage.getItem("viyaan_admin_token") : null;
+    const headers: Record<string, string> = {};
+    if (isJson) headers["Content-Type"] = "application/json";
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    return headers;
+  };
+
+  const fetchContacts = async () => {
     try {
-      const res = await fetch(`/api/contact?password=${encodeURIComponent(pass)}`);
+      const res = await fetch("/api/contact", {
+        headers: getAuthHeaders(false),
+        credentials: "include"
+      });
       if (res.ok) {
         const data = await res.json();
-        setContactList(data);
+        setContactList(Array.isArray(data) ? data : []);
       }
     } catch (e) {
       console.error("Fetch contacts error:", e);
@@ -161,8 +183,9 @@ export default function AdminDashboard() {
     try {
       const res = await fetch("/api/contact", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "updateStatus", id, status, password })
+        headers: getAuthHeaders(),
+        credentials: "include",
+        body: JSON.stringify({ action: "updateStatus", id, status })
       });
       if (res.ok) {
         fetchContacts();
@@ -180,8 +203,9 @@ export default function AdminDashboard() {
     try {
       const res = await fetch("/api/contact", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "delete", id, password })
+        headers: getAuthHeaders(),
+        credentials: "include",
+        body: JSON.stringify({ action: "delete", id })
       });
       if (res.ok) {
         fetchContacts();
@@ -193,45 +217,133 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    // Check session storage for login
-    const storedPass = sessionStorage.getItem("viyaan_admin_token");
-    if (storedPass === "viyaan2026") {
-      setIsAuthenticated(true);
-      setPassword(storedPass);
-      fetchContacts(storedPass);
+    // Check server-side session status
+    async function verifyExistingSession() {
+      try {
+        const res = await fetch("/api/admin/session", {
+          headers: getAuthHeaders(false),
+          credentials: "include"
+        });
+        if (res.ok) {
+          setIsAuthenticated(true);
+          fetchContacts();
+          fetchSubscribers();
+        }
+      } catch (err) {
+        console.error("Session check error:", err);
+      }
+      fetchContent();
+      fetchMedia();
+      fetchDbHealth();
     }
-    fetchContent();
-    fetchMedia();
-    fetchDbHealth();
+    verifyExistingSession();
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setAuthLoading(true);
     
     try {
-      const res = await fetch(`/api/contact?password=${encodeURIComponent(password)}`);
-      if (res.ok) {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ password })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
         setIsAuthenticated(true);
-        sessionStorage.setItem("viyaan_admin_token", password);
-        const data = await res.json();
-        setContactList(data);
+        if (data.sessionToken) {
+          sessionStorage.setItem("viyaan_admin_token", data.sessionToken);
+        }
+        fetchContacts();
         fetchContent();
         fetchMedia();
         fetchDbHealth();
         fetchSubscribers();
       } else {
-        setError("Invalid passphrase credentials.");
+        if (data.needsRecovery) {
+          setError(data.error);
+          setShowRecoveryModal(true);
+        } else {
+          setError(data.error || "Invalid passphrase credentials.");
+        }
       }
     } catch (err) {
       setError("Authorization connection failure.");
+    } finally {
+      setAuthLoading(false);
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/admin/session", {
+        method: "DELETE",
+        headers: getAuthHeaders(false),
+        credentials: "include"
+      });
+    } catch {}
     setIsAuthenticated(false);
     sessionStorage.removeItem("viyaan_admin_token");
     setPassword("");
+  };
+
+  // Recovery Handlers
+  const handleVerifyRecoveryKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRecoveryError("");
+    setRecoveryLoading(true);
+    try {
+      const res = await fetch("/api/admin/recovery", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recoveryKey })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setResetToken(data.resetToken);
+        setRecoveryStep("reset");
+      } else {
+        setRecoveryError(data.error || "Invalid administrative recovery key.");
+      }
+    } catch {
+      setRecoveryError("Recovery service connection failure.");
+    } finally {
+      setRecoveryLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRecoveryError("");
+    if (newPassword.length < 12) {
+      setRecoveryError("Passphrase must be at least 12 characters long.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setRecoveryError("Passphrases do not match.");
+      return;
+    }
+    setRecoveryLoading(true);
+    try {
+      const res = await fetch("/api/admin/recovery", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resetToken, newPassword })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setRecoveryStep("success");
+      } else {
+        setRecoveryError(data.error || "Failed to update passphrase.");
+      }
+    } catch {
+      setRecoveryError("Passphrase reset connection failure.");
+    } finally {
+      setRecoveryLoading(false);
+    }
   };
 
   const triggerSubmit = async (action: string, data: any) => {
@@ -240,8 +352,9 @@ export default function AdminDashboard() {
     try {
       const res = await fetch("/api/content", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, data, password })
+        headers: getAuthHeaders(),
+        credentials: "include",
+        body: JSON.stringify({ action, data })
       });
       if (res.ok) {
         const result = await res.json();
@@ -343,7 +456,10 @@ export default function AdminDashboard() {
 
   const fetchSubscribers = async () => {
     try {
-      const res = await fetch(`/api/newsletter?password=${encodeURIComponent(password)}`);
+      const res = await fetch("/api/newsletter", {
+        headers: getAuthHeaders(false),
+        credentials: "include"
+      });
       if (res.ok) {
         const data = await res.json();
         setSubscribers(Array.isArray(data) ? data : []);
@@ -358,8 +474,9 @@ export default function AdminDashboard() {
     try {
       const res = await fetch("/api/newsletter", {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, password }),
+        headers: getAuthHeaders(),
+        credentials: "include",
+        body: JSON.stringify({ id }),
       });
       if (res.ok) fetchSubscribers();
     } catch (e) {
@@ -393,6 +510,8 @@ export default function AdminDashboard() {
 
       const res = await fetch("/api/upload", {
         method: "POST",
+        headers: getAuthHeaders(false),
+        credentials: "include",
         body: formData
       });
       if (res.ok) {
@@ -415,8 +534,9 @@ export default function AdminDashboard() {
     try {
       const res = await fetch("/api/media", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filename, sha, password })
+        headers: getAuthHeaders(),
+        credentials: "include",
+        body: JSON.stringify({ filename, sha })
       });
       if (res.ok) {
         fetchMedia(); // Refresh gallery
@@ -437,41 +557,219 @@ export default function AdminDashboard() {
   if (!isAuthenticated) {
     return (
       <div className="relative min-h-screen bg-[#050505] text-[#E4E4E7] flex flex-col justify-center items-center px-6">
-        <div className="max-w-md w-full border border-neutral-900 bg-neutral-950 p-8 rounded-2xl blueprint-grid flex flex-col gap-6">
+        <div className="max-w-md w-full border border-white/[0.08] bg-[#09090C] p-8 rounded-2xl flex flex-col gap-6 shadow-2xl relative">
           <div className="flex flex-col items-center gap-3 text-center">
-            <div className="p-3 bg-neutral-900 border border-neutral-850 rounded-xl text-viyaan-cyan">
+            <div className="p-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-[#00B2FF]">
               <Lock className="w-5 h-5" />
             </div>
             <h1 className="font-display font-semibold text-lg text-white">Viyaan AI CMS Portal</h1>
-            <p className="text-[10px] text-neutral-500 font-mono">AUTHORIZED ADMINISTRATORS ONLY</p>
+            <p className="text-[10px] text-neutral-400 font-mono tracking-wider">AUTHORIZED ADMINISTRATORS ONLY</p>
           </div>
 
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-mono text-neutral-500 uppercase">Admin Passphrase</label>
+              <label className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">Admin Passphrase</label>
               <input 
                 type="password" 
                 required 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="bg-neutral-950 border border-neutral-900 focus:border-neutral-800 outline-none rounded-lg px-3 py-2.5 text-xs text-white placeholder-neutral-850" 
+                className="bg-[#050505] border border-white/[0.1] focus:border-[#0066FF] outline-none rounded-lg px-3 py-2.5 text-xs text-white placeholder-neutral-600 transition-colors" 
                 placeholder="Enter passphrase"
               />
             </div>
             {error && (
-              <div className="flex items-center gap-2 text-xs text-red-400 font-mono">
-                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <div className="flex items-start gap-2 text-xs text-red-400 font-mono bg-red-950/20 border border-red-900/40 p-2.5 rounded-lg">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
                 <span>{error}</span>
               </div>
             )}
             <button 
               type="submit" 
-              className="bg-white text-black hover:bg-neutral-255 transition-colors text-xs font-mono uppercase tracking-wider font-semibold h-11 rounded-lg flex items-center justify-center cursor-pointer"
+              disabled={authLoading}
+              className="bg-white text-black hover:bg-neutral-200 transition-colors text-xs font-mono uppercase tracking-wider font-semibold h-11 rounded-lg flex items-center justify-center cursor-pointer disabled:opacity-50"
             >
-              Authenticate Portal
+              {authLoading ? "Authenticating..." : "Authenticate Portal"}
             </button>
           </form>
+
+          {/* Recovery Trigger */}
+          <div className="pt-2 border-t border-white/[0.06] text-center">
+            <button
+              type="button"
+              onClick={() => {
+                setShowRecoveryModal(true);
+                setRecoveryStep("key");
+                setRecoveryError("");
+              }}
+              className="text-xs text-neutral-400 hover:text-[#00B2FF] font-sans transition-colors cursor-pointer"
+            >
+              Forgot or need to reconfigure passphrase?
+            </button>
+          </div>
         </div>
+
+        {/* Administrative Passphrase Recovery Modal */}
+        {showRecoveryModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <div className="max-w-md w-full bg-[#09090C] border border-white/[0.12] rounded-2xl p-7 flex flex-col gap-5 shadow-2xl relative">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="font-display font-semibold text-lg text-white">Administrative Recovery</h2>
+                  <p className="text-xs text-neutral-400 font-sans mt-0.5">
+                    {recoveryStep === "key" && "Enter your server recovery key (ADMIN_RECOVERY_KEY)."}
+                    {recoveryStep === "reset" && "Set a strong replacement passphrase."}
+                    {recoveryStep === "success" && "Passphrase successfully updated."}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowRecoveryModal(false)}
+                  className="text-neutral-500 hover:text-white text-sm p-1"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {recoveryError && (
+                <div className="flex items-start gap-2 text-xs text-red-400 font-mono bg-red-950/20 border border-red-900/40 p-2.5 rounded-lg">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <span>{recoveryError}</span>
+                </div>
+              )}
+
+              {recoveryStep === "key" && (
+                <form onSubmit={handleVerifyRecoveryKey} className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">
+                      Server Recovery Key
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      value={recoveryKey}
+                      onChange={(e) => setRecoveryKey(e.target.value)}
+                      placeholder="Paste ADMIN_RECOVERY_KEY from server environment"
+                      className="bg-[#050505] border border-white/[0.1] focus:border-[#0066FF] outline-none rounded-lg px-3 py-2.5 text-xs text-white placeholder-neutral-600 transition-colors font-mono"
+                    />
+                    <p className="text-[11px] text-neutral-500 leading-relaxed mt-1">
+                      Located securely in your server environment (<code className="text-neutral-300">.env.local</code>). Never exposed to client bundles.
+                    </p>
+                  </div>
+                  <div className="flex justify-end gap-3 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowRecoveryModal(false)}
+                      className="px-4 py-2 text-xs text-neutral-400 hover:text-white transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={recoveryLoading}
+                      className="px-5 py-2.5 bg-[#0066FF] hover:bg-[#0055D4] text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      {recoveryLoading ? "Verifying..." : "Verify Recovery Key"}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {recoveryStep === "reset" && (
+                <form onSubmit={handleResetPassword} className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">
+                      New Passphrase
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Minimum 12 characters (passphrase recommended)"
+                      className="bg-[#050505] border border-white/[0.1] focus:border-[#0066FF] outline-none rounded-lg px-3 py-2.5 text-xs text-white placeholder-neutral-600 transition-colors"
+                    />
+                    {/* Real-time strength indicator */}
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="flex-1 h-1 bg-neutral-800 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-300 ${
+                            newPassword.length < 12
+                              ? "w-1/3 bg-red-500"
+                              : newPassword.length >= 16
+                              ? "w-full bg-emerald-500"
+                              : "w-2/3 bg-amber-500"
+                          }`}
+                        />
+                      </div>
+                      <span className="text-[10px] font-mono text-neutral-400">
+                        {newPassword.length < 12 ? "Weak (<12)" : newPassword.length >= 16 ? "Strong" : "Good (≥12)"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">
+                      Confirm Passphrase
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Re-enter new passphrase"
+                      className="bg-[#050505] border border-white/[0.1] focus:border-[#0066FF] outline-none rounded-lg px-3 py-2.5 text-xs text-white placeholder-neutral-600 transition-colors"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-3 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => setRecoveryStep("key")}
+                      className="px-4 py-2 text-xs text-neutral-400 hover:text-white transition-colors"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={recoveryLoading}
+                      className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      {recoveryLoading ? "Saving..." : "Set New Passphrase"}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {recoveryStep === "success" && (
+                <div className="flex flex-col gap-4 text-center py-4">
+                  <div className="w-12 h-12 rounded-full bg-emerald-950/60 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mx-auto">
+                    <Check className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-display font-medium text-white text-base">Passphrase Configured</h3>
+                    <p className="text-xs text-neutral-400 font-sans mt-1">
+                      Your new passphrase is now active. All previous sessions have been invalidated.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowRecoveryModal(false);
+                      setRecoveryStep("key");
+                      setRecoveryKey("");
+                      setNewPassword("");
+                      setConfirmPassword("");
+                    }}
+                    className="w-full py-2.5 bg-white text-black hover:bg-neutral-200 text-xs font-medium rounded-lg transition-colors mt-2"
+                  >
+                    Proceed to Sign In
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     );
   }

@@ -21,13 +21,25 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://viyaan.ai"),
   title: "Viyaan AI — Intelligence Beyond the Human Mind",
-  description: "Official digital headquarters of Viyaan AI, an Artificial Intelligence product and research company combining AI, psychology, product design, and automation to amplify human potential.",
-  keywords: ["Viyaan AI", "JOI Companion", "Human OS", "AI Research", "Dharani Kumar", "Artificial Intelligence", "Cognitive Psychology", "Human-centered AI"],
+  description:
+    "Official digital headquarters of Viyaan AI, an Artificial Intelligence product and research company combining AI, psychology, product design, and automation to amplify human potential.",
+  keywords: [
+    "Viyaan AI",
+    "JOI Companion",
+    "Human OS",
+    "AI Research",
+    "Dharani Kumar",
+    "Artificial Intelligence",
+    "Cognitive Psychology",
+    "Human-centered AI",
+  ],
   authors: [{ name: "Dharani Kumar" }],
   openGraph: {
     title: "Viyaan AI — Intelligence Beyond the Human Mind",
-    description: "Official digital headquarters of Viyaan AI, a next-generation AI product and research company.",
+    description:
+      "Official digital headquarters of Viyaan AI, a next-generation AI product and research company.",
     type: "website",
     url: "https://viyaan.ai",
     images: [{ url: "/logo.png" }],
@@ -35,14 +47,16 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Viyaan AI — Intelligence Beyond the Human Mind",
-    description: "An AI product and research company building JOI Companion, Human OS, and Viyaan Future.",
+    description:
+      "An AI product and research company building JOI Companion, Human OS, and Viyaan Future.",
     images: ["/logo.png"],
-  }
+  },
 };
 
 import { getDb } from "@/lib/db";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import WebVitalsTracker from "@/components/WebVitalsTracker";
+import CustomCursor from "@/components/CustomCursor";
 
 export default async function RootLayout({
   children,
@@ -72,8 +86,12 @@ export default async function RootLayout({
       style={{ colorScheme: "dark" }}
     >
       <body className="min-h-full bg-[#050505] text-zinc-100 flex flex-col font-sans">
-        <GoogleAnalytics measurementId={gaMeasurementId} cookieConsentEnabled={cookieConsentEnabled} />
+        <GoogleAnalytics
+          measurementId={gaMeasurementId}
+          cookieConsentEnabled={cookieConsentEnabled}
+        />
         <WebVitalsTracker />
+        <CustomCursor />
         {children}
       </body>
     </html>

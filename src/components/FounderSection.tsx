@@ -2,14 +2,15 @@
 
 import React from "react";
 import Image from "next/image";
-import { Sparkles, BookOpen, Hammer, Compass } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
 const Linkedin = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
-    strokeWidth="2"
+    strokeWidth="1.75"
     strokeLinecap="round"
     strokeLinejoin="round"
     className={props.className}
@@ -25,7 +26,7 @@ const Twitter = (props: React.SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
-    strokeWidth="2"
+    strokeWidth="1.75"
     strokeLinecap="round"
     strokeLinejoin="round"
     className={props.className}
@@ -36,106 +37,71 @@ const Twitter = (props: React.SVGProps<SVGSVGElement>) => (
 
 export default function FounderSection() {
   return (
-    <div className="border border-neutral-900 bg-neutral-950/20 rounded-2xl p-6 md:p-8 blueprint-grid">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-        {/* Left column: Image & Social Links */}
-        <div className="lg:col-span-4 flex flex-col items-center gap-6 text-center">
-          <div className="relative w-48 h-48 rounded-2xl overflow-hidden border border-neutral-800 p-1.5 bg-neutral-950">
-            <div className="w-full h-full rounded-xl overflow-hidden relative grayscale hover:grayscale-0 transition-all duration-700">
-              <Image
-                src="/founder.jpeg"
-                alt="Dharani Kumar — Founder of Viyaan AI"
-                fill
-                sizes="(max-width: 768px) 192px, 192px"
-                className="object-cover"
-                priority
-              />
-            </div>
-            {/* Fine border accents */}
-            <div className="absolute top-2 left-2 w-1.5 h-1.5 border-t border-l border-viyaan-cyan"></div>
-            <div className="absolute top-2 right-2 w-1.5 h-1.5 border-t border-r border-viyaan-cyan"></div>
-            <div className="absolute bottom-2 left-2 w-1.5 h-1.5 border-b border-l border-viyaan-cyan"></div>
-            <div className="absolute bottom-2 right-2 w-1.5 h-1.5 border-b border-r border-viyaan-cyan"></div>
+    <div className="rounded-2xl border border-white/[0.06] bg-[#09090C]/60 p-7 sm:p-10 backdrop-blur-sm">
+      <div className="flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-10">
+        {/* Portrait & Identity */}
+        <div className="flex flex-col items-center text-center shrink-0">
+          <div className="relative w-36 h-36 sm:w-40 sm:h-40 rounded-2xl overflow-hidden border border-white/[0.08] bg-[#050505]">
+            <Image
+              src="/founder.jpeg"
+              alt="Dharani Kumar — Founder of Viyaan AI"
+              fill
+              sizes="160px"
+              className="object-cover grayscale hover:grayscale-0 transition-all duration-700"
+              priority
+            />
           </div>
 
-          <div>
-            <h4 className="font-display font-semibold text-lg text-white">Dharani Kumar</h4>
-            <p className="text-xs font-mono text-neutral-500 uppercase tracking-widest mt-0.5">Founder & Architect</p>
+          <div className="mt-3">
+            <h4 className="font-display font-medium text-base text-white">Dharani Kumar</h4>
+            <p className="text-xs text-neutral-400 font-sans mt-0.5">Founder & Architect</p>
           </div>
 
-          {/* Social Links */}
-          <div className="flex gap-4">
+          <div className="flex items-center gap-2.5 mt-3">
             <a
               href="https://www.linkedin.com/in/dharani-kumar-49622b349"
               target="_blank"
               rel="noopener noreferrer"
-              className="p-2.5 rounded-lg border border-neutral-900 bg-neutral-950 text-neutral-400 hover:text-viyaan-cyan hover:border-neutral-800 transition-all"
+              className="p-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] text-neutral-400 hover:text-white hover:border-white/[0.14] transition-all"
               aria-label="LinkedIn Profile"
             >
-              <Linkedin className="w-4 h-4" />
+              <Linkedin className="w-3.5 h-3.5 shrink-0" />
             </a>
             <a
               href="https://x.com/by_dharani"
               target="_blank"
               rel="noopener noreferrer"
-              className="p-2.5 rounded-lg border border-neutral-900 bg-neutral-950 text-neutral-400 hover:text-viyaan-cyan hover:border-neutral-800 transition-all"
+              className="p-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] text-neutral-400 hover:text-white hover:border-white/[0.14] transition-all"
               aria-label="Twitter X Profile"
             >
-              <Twitter className="w-4 h-4" />
+              <Twitter className="w-3.5 h-3.5 shrink-0" />
             </a>
           </div>
         </div>
 
-        {/* Right column: Building in Public & Philosophy */}
-        <div className="lg:col-span-8 flex flex-col gap-6">
-          <div>
-            <span className="text-xs text-viyaan-blue font-mono tracking-widest uppercase block mb-1">
-              Building in Public
+        {/* Vision Narrative & Read More */}
+        <div className="flex flex-col justify-between gap-5 flex-1 text-center md:text-left">
+          <div className="flex flex-col gap-3">
+            <span className="text-xs uppercase tracking-widest text-[#00B2FF] font-sans">
+              Founding Vision
             </span>
-            <h3 className="font-display text-xl md:text-2xl font-semibold text-white">
+            <h3 className="font-display text-xl sm:text-2xl font-semibold text-white tracking-tight">
               An Open Journey of Discipline and Craft
             </h3>
+            <p className="text-sm text-neutral-300 leading-relaxed font-sans max-w-xl">
+              Viyaan AI is not built behind hidden doors or driven by venture hype. We design in public, sharing our research, engineering decisions, and daily lessons to build systems that amplify human potential.
+            </p>
           </div>
 
-          <p className="text-sm md:text-base text-neutral-300 leading-relaxed">
-            Viyaan AI is not built behind thick mahogany doors or hidden under layers of stealth. We build publicly, sharing our challenges, research papers, engineering decisions, and daily lessons. This transparency keeps us disciplined, accountable, and deeply connected with our community.
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-neutral-900 pt-6">
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2 text-viyaan-cyan">
-                <Hammer className="w-4 h-4" />
-                <h5 className="font-display font-medium text-white text-xs md:text-sm">Craftsmanship</h5>
-              </div>
-              <p className="text-[11px] md:text-xs text-neutral-500 leading-relaxed">
-                Refusing to ship code we aren't proud of. Obsessing over speed, layout simplicity, and database privacy protocols.
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2 text-viyaan-blue">
-                <BookOpen className="w-4 h-4" />
-                <h5 className="font-display font-medium text-white text-xs md:text-sm">Continuous Learning</h5>
-              </div>
-              <p className="text-[11px] md:text-xs text-neutral-500 leading-relaxed">
-                Adapting user research findings directly into core products. Approaching machine models with child-like curiosity.
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2 text-zinc-300">
-                <Compass className="w-4 h-4" />
-                <h5 className="font-display font-medium text-white text-xs md:text-sm">Long-term Vision</h5>
-              </div>
-              <p className="text-[11px] md:text-xs text-neutral-500 leading-relaxed">
-                Structuring decisions around a 50-year horizon. Choosing durable trust over short-term attention spikes.
-              </p>
-            </div>
+          <div className="pt-2">
+            <Link
+              href="/founder"
+              className="inline-flex items-center gap-1.5 text-xs text-neutral-300 hover:text-white font-sans transition-colors group"
+            >
+              <span>Explore founding philosophy</span>
+              <ArrowRight className="w-3 h-3 text-neutral-400 group-hover:translate-x-0.5 transition-transform" />
+            </Link>
           </div>
-
-          <blockquote className="border-l-2 border-neutral-800 pl-4 py-1 italic text-xs text-neutral-400 leading-relaxed bg-neutral-950/20 rounded-r">
-            &ldquo;Viyaan AI belongs to the ecosystem we serve. I am here to help lay the bricks, but the mission itself—amplifying human potential—remains the focus.&rdquo;
-          </blockquote>
         </div>
       </div>
     </div>

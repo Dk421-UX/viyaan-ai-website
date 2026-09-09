@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { trackNewsletterSuccess, trackNewsletterFailed, trackFormSubmission } from "@/analytics/events";
+import { ArrowUpRight, CheckCircle2, AlertCircle } from "lucide-react";
 
 export default function Footer() {
   const [company, setCompany] = useState<any>(null);
@@ -16,12 +17,8 @@ export default function Footer() {
       .then((r) => r.json())
       .then((data) => {
         if (data) {
-          if (data.companyInfo) {
-            setCompany(data.companyInfo);
-          }
-          if (data.newsletter) {
-            setNewsletter(data.newsletter);
-          }
+          if (data.companyInfo) setCompany(data.companyInfo);
+          if (data.newsletter) setNewsletter(data.newsletter);
         }
       })
       .catch((e) => console.error("Error loading footer content dynamically:", e));
@@ -32,6 +29,7 @@ export default function Footer() {
     if (!email) return;
     setStatus("loading");
     setMessage("");
+
     try {
       const res = await fetch("/api/newsletter", {
         method: "POST",
@@ -43,16 +41,12 @@ export default function Footer() {
         setStatus("success");
         setMessage(data.message || "Subscribed successfully.");
         setEmail("");
-        
-        // Track GA4 events
         trackNewsletterSuccess();
         trackFormSubmission("success", "newsletter_footer");
       } else {
         const errorMsg = data.error || "Subscription failed.";
         setStatus("error");
         setMessage(errorMsg);
-        
-        // Track GA4 events
         trackNewsletterFailed(errorMsg);
         trackFormSubmission("failure", "newsletter_footer", errorMsg);
       }
@@ -60,28 +54,27 @@ export default function Footer() {
       const errorMsg = err.message || "Connection error.";
       setStatus("error");
       setMessage("Connection error. Please try again.");
-      
-      // Track GA4 events
       trackNewsletterFailed(errorMsg);
       trackFormSubmission("failure", "newsletter_footer", errorMsg);
     }
   };
 
   return (
-    <footer className="relative py-16 px-6 md:px-12 border-t border-[#121214] bg-[#050505] mt-auto">
-      {/* Newsletter Block */}
-      {newsletter?.enabled && (
-        <div className="max-w-5xl mx-auto pb-12 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-[#121214] mb-12">
-          <div className="max-w-md">
-            <h4 className="font-display font-semibold text-sm text-white tracking-tight">
-              {newsletter.title || "Stay Ahead of the Curve"}
-            </h4>
-            <p className="text-xs text-neutral-500 font-sans mt-1 leading-relaxed">
-              {newsletter.description || "Subscribe for product updates and research papers."}
-            </p>
-          </div>
-          <form onSubmit={handleSubscribe} className="w-full md:w-auto flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center">
-            <div className="relative flex-1 sm:flex-initial">
+    <footer className="relative border-t border-white/[0.05] bg-[#050505] pt-16 pb-12 px-5 sm:px-8 mt-auto">
+      <div className="max-w-6xl mx-auto flex flex-col gap-12">
+        {/* Optional Newsletter Section if enabled */}
+        {newsletter?.enabled && (
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-12 border-b border-white/[0.05]">
+            <div className="max-w-md flex flex-col gap-1">
+              <h4 className="font-display font-medium text-base text-white">
+                {newsletter.title || "Stay informed on foundational research"}
+              </h4>
+              <p className="text-xs sm:text-sm text-neutral-400 font-sans leading-relaxed">
+                {newsletter.description || "Receive architecture papers, model updates, and engineering dispatches."}
+              </p>
+            </div>
+
+            <form onSubmit={handleSubscribe} className="w-full md:w-auto flex flex-col sm:flex-row gap-2.5">
               <input
                 type="email"
                 required
@@ -89,74 +82,88 @@ export default function Footer() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={status === "loading" || status === "success"}
-                className="w-full sm:w-64 bg-neutral-950 border border-neutral-900 focus:border-neutral-800 disabled:opacity-50 text-xs text-white rounded-lg px-3 py-2.5 outline-none font-mono"
+                className="h-10 px-3.5 rounded-lg bg-[#09090C] border border-white/[0.08] text-xs text-white placeholder-neutral-500 font-sans focus:border-[#00B2FF] focus:outline-none w-full sm:w-64 transition-colors"
               />
-              {message && (
-                <span className={`absolute left-0 -bottom-5 text-[9px] font-mono ${status === "success" ? "text-emerald-500" : "text-red-400"}`}>
-                  {message}
-                </span>
-              )}
-            </div>
-            <button
-              type="submit"
-              disabled={status === "loading" || status === "success"}
-              className="h-[38px] px-4 bg-white hover:bg-neutral-200 disabled:bg-neutral-900 disabled:text-neutral-500 text-black font-mono text-[10px] uppercase font-bold tracking-wider rounded-lg flex items-center justify-center transition-colors cursor-pointer"
-            >
-              {status === "loading" ? "Subscribing..." : status === "success" ? "Subscribed" : "Subscribe"}
-            </button>
-          </form>
-        </div>
-      )}
+              <button
+                type="submit"
+                disabled={status === "loading" || status === "success"}
+                className="cta-primary h-10 text-xs px-4"
+              >
+                <span>{status === "loading" ? "Subscribing..." : status === "success" ? "Subscribed" : "Subscribe"}</span>
+              </button>
+            </form>
 
-      <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
-        
-        {/* Left: Branding & Core Mission statement */}
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2">
-            <span className="font-display font-bold text-xs tracking-wider text-white">
+            {message && (
+              <span className={`text-xs font-sans flex items-center gap-1.5 ${status === "success" ? "text-emerald-400" : "text-red-400"}`}>
+                {status === "success" ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
+                {message}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Main Footer Row */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
+          {/* Brand & Mission Statement */}
+          <div className="flex flex-col gap-2 max-w-sm">
+            <span className="font-display font-semibold text-sm tracking-tight text-white">
               VIYAAN AI
             </span>
+            <p className="text-xs sm:text-sm text-neutral-400 font-sans leading-relaxed">
+              {company?.tagline || "Intelligence Beyond the Human Mind."}
+            </p>
           </div>
-          <p className="text-xs text-neutral-500 max-w-sm leading-relaxed font-mono">
-            {company?.tagline || "Intelligence Beyond the Human Mind."}<br />
-            An AI Product and Research Company.
-          </p>
+
+          {/* Navigation Links */}
+          <nav className="flex flex-wrap gap-x-8 gap-y-3 text-xs sm:text-sm text-neutral-400 font-sans" aria-label="Footer navigation">
+            <Link href="/products" className="hover:text-white transition-colors">
+              Products
+            </Link>
+            <Link href="/research" className="hover:text-white transition-colors">
+              Research
+            </Link>
+            <Link href="/lab" className="hover:text-white transition-colors">
+              Lab
+            </Link>
+            <Link href="/founder" className="hover:text-white transition-colors">
+              Founder
+            </Link>
+            <Link href="/blog" className="hover:text-white transition-colors">
+              Blog
+            </Link>
+            <Link href="/contact" className="hover:text-white transition-colors">
+              Contact
+            </Link>
+          </nav>
+
+          {/* Social Channels */}
+          <div className="flex items-center gap-5 text-xs text-neutral-400 font-sans">
+            <a
+              href={company?.linkedinCompany || "https://www.linkedin.com/company/viyaan-ai"}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-white transition-colors inline-flex items-center gap-1"
+            >
+              <span>LinkedIn</span>
+              <ArrowUpRight className="w-3 h-3 text-neutral-600" />
+            </a>
+            <a
+              href={company?.twitterFounder || "https://x.com/by_dharani"}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-white transition-colors inline-flex items-center gap-1"
+            >
+              <span>Twitter</span>
+              <ArrowUpRight className="w-3 h-3 text-neutral-600" />
+            </a>
+          </div>
         </div>
 
-        {/* Right: Channels & Navigation */}
-        <div className="flex flex-col sm:flex-row gap-8 sm:gap-12 text-xs font-mono text-neutral-400">
-          <div className="flex flex-col gap-2">
-            <span className="text-[10px] text-neutral-500 uppercase tracking-widest block">Systems</span>
-            <a href="https://joi-ai-wq7f.vercel.app/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
-              JOI Companion AI
-            </a>
-            <a href="https://human-os-ptot.vercel.app/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
-              Human OS
-            </a>
-            <a href="https://viyaan-future-ai.vercel.app/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
-              Viyaan Future AI
-            </a>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <span className="text-[10px] text-neutral-500 uppercase tracking-widest block">Official Channels</span>
-            <a href={company?.linkedinCompany || "https://www.linkedin.com/company/viyaan-ai"} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
-              LinkedIn Company
-            </a>
-            <a href={company?.twitterFounder || "https://x.com/by_dharani"} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
-              Twitter X
-            </a>
-            <a href={company?.linkedinFounder || "https://www.linkedin.com/in/dharani-kumar-49622b349"} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
-              Founder Profile
-            </a>
-          </div>
+        {/* Bottom copyright row */}
+        <div className="pt-8 border-t border-white/[0.05] flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-neutral-600 font-sans">
+          <span>© 2026 Viyaan AI. All rights reserved.</span>
+          <span>Building intelligent systems for human understanding.</span>
         </div>
-      </div>
-
-      {/* Bottom Legal */}
-      <div className="max-w-5xl mx-auto border-t border-[#121214] pt-8 mt-12 flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] font-mono text-neutral-600">
-        <span>© {new Date().getFullYear()} VIYAAN AI. ALL RIGHTS RESERVED.</span>
-        <span>{company?.location || "Chennai, India / Remote"}</span>
       </div>
     </footer>
   );

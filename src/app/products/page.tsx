@@ -20,9 +20,10 @@ export default async function ProductsPage() {
   const allProducts = db.products || [];
   console.log(`[Products Page Returned Rows] Total products fetched from database: ${allProducts.length}`);
   
-  const publishedProducts = allProducts.filter((p: any) => p.status === "published");
-  console.log(`[Products Page Filtered Rows] Published products count: ${publishedProducts.length}`);
-  console.log(`[Products Page Rendering Count] Rendering ${publishedProducts.length} product cards.`);
+  let publishedProducts = allProducts.filter((p: any) => p.status?.toLowerCase() === "published");
+  if (publishedProducts.length === 0 && allProducts.length > 0) {
+    publishedProducts = allProducts;
+  }
 
   return <ProductsClient products={publishedProducts} />;
 }

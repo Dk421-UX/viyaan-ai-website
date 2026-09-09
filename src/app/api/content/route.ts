@@ -4,6 +4,7 @@ import path from "path";
 import { getDb, writeLocalDb } from "@/lib/db";
 import { supabaseAdmin, isSupabaseAdminConfigured } from "@/lib/supabase";
 import { runAutoInitialization } from "@/lib/dbInit";
+import { verifyAdminRequest, getAdminCredentials, verifyPassword } from "@/lib/auth";
 
 const localDbPath = path.join(process.cwd(), "src/data/db.json");
 
@@ -27,10 +28,6 @@ async function ensureDbInit() {
 }
 
 export async function GET() {
-  if (!isSupabaseAdminConfigured) {
-    return NextResponse.json({ error: "Database configuration is missing" }, { status: 500 });
-  }
-
   await ensureDbInit();
   const data = await getDb();
   if (!data) {
@@ -40,33 +37,22 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  if (!isSupabaseAdminConfigured) {
-    return NextResponse.json({ error: "Database configuration is missing" }, { status: 500 });
-  }
-
   try {
     await ensureDbInit();
     const body = await request.json();
     const { action, data, password } = body;
 
-    // 1. Resolve authentic passphrase
-    let validPassphrase = "viyaan2026";
-    if (isSupabaseAdminConfigured && supabaseAdmin) {
-      try {
-        const { data: adminRecord } = await supabaseAdmin
-          .from("admins")
-          .select("passphrase")
-          .limit(1);
-        if (adminRecord && adminRecord.length > 0) {
-          validPassphrase = adminRecord[0].passphrase;
-        }
-      } catch (err) {
-        console.error("Error retrieving password from database, fallback used:", err);
+    // 1. Authenticate request via HttpOnly session / Bearer token, or secure password verification
+    const isSessionValid = verifyAdminRequest(request);
+    let isCredentialValid = false;
+    if (!isSessionValid && password) {
+      const credentials = await getAdminCredentials();
+      if (credentials) {
+        isCredentialValid = verifyPassword(password, credentials.passwordHash, credentials.salt);
       }
     }
 
-    // Password authentication check
-    if (password !== validPassphrase && password !== "viyaan2026") {
+    if (!isSessionValid && !isCredentialValid) {
       return NextResponse.json({ error: "Unauthorized access" }, { status: 401 });
     }
 
