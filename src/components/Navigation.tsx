@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, ArrowUpRight } from "lucide-react";
+import SiteContainer from "./SiteContainer";
 
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
@@ -23,10 +24,10 @@ export default function Navigation() {
     { label: "Contact", href: "/contact" },
   ];
 
-  // Scroll separation
+  // Scroll detection
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 16);
+      setIsScrolled(window.scrollY > 12);
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
@@ -34,13 +35,16 @@ export default function Navigation() {
 
   // Lock body scroll when mobile menu is open
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    if (!isOpen) return;
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousDocumentOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
     return () => {
-      document.body.style.overflow = "";
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousDocumentOverflow;
     };
   }, [isOpen]);
 
@@ -78,25 +82,20 @@ export default function Navigation() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen]);
 
-  // Auto-close on route change
-  useEffect(() => {
-    setIsOpen(false);
-  }, [pathname]);
-
   return (
     <>
       <header
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-200 ${
           isScrolled
-            ? "bg-[#050505]/92 backdrop-blur-2xl border-b border-white/[0.08] py-3.5 shadow-sm shadow-black/50"
-            : "bg-transparent border-b border-transparent py-5 sm:py-6"
+            ? "bg-[#050505]/92 backdrop-blur-md border-b border-white/[0.07] py-3 shadow-sm shadow-black/40"
+            : "bg-transparent border-b border-transparent py-4 sm:py-5"
         }`}
       >
-        <div className="max-w-6xl mx-auto px-5 sm:px-8 flex items-center justify-between">
+        <SiteContainer className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center">
           {/* Brand Mark */}
           <Link
             href="/"
-            className="flex items-center gap-2.5 group focus-visible:outline-none"
+            className="col-start-1 flex items-center gap-2.5 group focus-visible:outline-none min-h-[44px]"
             aria-label="Viyaan AI Home"
           >
             <div className="relative w-6 h-6 rounded-md overflow-hidden bg-white/5 border border-white/10 flex items-center justify-center transition-opacity group-hover:opacity-90">
@@ -114,9 +113,9 @@ export default function Navigation() {
             </span>
           </Link>
 
-          {/* Desktop Navigation */}
+          {/* Desktop Navigation - Centered */}
           <nav
-            className="hidden md:flex items-center gap-7"
+            className="hidden md:col-start-2 md:flex items-center justify-self-center gap-6 lg:gap-7"
             aria-label="Primary navigation"
           >
             {navLinks.map((link) => {
@@ -125,7 +124,7 @@ export default function Navigation() {
                 <Link
                   key={link.label}
                   href={link.href}
-                  className={`text-[13px] font-sans transition-colors duration-200 focus-visible:outline-none ${
+                  className={`text-xs lg:text-[13px] font-sans transition-colors duration-150 py-2 focus-visible:outline-none ${
                     isActive
                       ? "text-white font-medium"
                       : "text-neutral-400 hover:text-white"
@@ -138,10 +137,10 @@ export default function Navigation() {
           </nav>
 
           {/* Desktop Quick Action */}
-          <div className="hidden md:flex items-center">
+          <div className="hidden md:col-start-3 md:flex items-center justify-self-end">
             <Link
               href="/contact"
-              className="text-[13px] text-neutral-300 hover:text-white transition-colors duration-200 flex items-center gap-1 focus-visible:outline-none"
+              className="cta-link text-xs lg:text-[13px] text-neutral-300 hover:text-white focus-visible:outline-none"
             >
               <span>Get in touch</span>
               <ArrowUpRight className="w-3.5 h-3.5 text-neutral-500" />
@@ -152,39 +151,35 @@ export default function Navigation() {
           <button
             ref={toggleBtnRef}
             onClick={() => setIsOpen(!isOpen)}
-            className="md:hidden text-neutral-300 hover:text-white p-1.5 focus-visible:outline-none cursor-pointer transition-colors"
+            className="col-start-3 md:hidden justify-self-end text-neutral-300 hover:text-white p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center focus-visible:outline-none cursor-pointer transition-colors"
             aria-expanded={isOpen}
             aria-controls="mobile-navigation"
             aria-label={isOpen ? "Close menu" : "Open menu"}
           >
             {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
-        </div>
+        </SiteContainer>
       </header>
 
-      {/* Mobile Navigation Curtain / Overlay */}
+      {/* Mobile Navigation Drawer */}
       <div
         id="mobile-navigation"
         ref={menuRef}
         aria-hidden={!isOpen}
-        className={`fixed inset-0 z-40 bg-[#050505]/98 backdrop-blur-2xl flex flex-col justify-between px-7 py-8 pt-24 transition-all duration-300 md:hidden ${
+        className={`fixed inset-0 z-40 bg-[#050505]/98 backdrop-blur-xl flex flex-col justify-between px-5 sm:px-8 pt-24 pb-8 transition-all duration-250 md:hidden ${
           isOpen
             ? "opacity-100 pointer-events-auto visible"
             : "opacity-0 pointer-events-none invisible"
         }`}
       >
         <nav
-          className="flex flex-col gap-6 mt-4"
+          className="flex flex-col gap-1"
           aria-label="Mobile navigation"
         >
-          <span className="text-[11px] uppercase tracking-widest text-neutral-600 font-mono">
-            Navigation
-          </span>
-
           <Link
             href="/"
             onClick={() => setIsOpen(false)}
-            className={`text-2xl font-display font-medium tracking-tight transition-colors ${
+            className={`text-lg font-display font-medium tracking-tight py-3 min-h-[48px] transition-colors ${
               pathname === "/" ? "text-white" : "text-neutral-400 hover:text-white"
             }`}
           >
@@ -198,7 +193,7 @@ export default function Navigation() {
                 key={link.label}
                 href={link.href}
                 onClick={() => setIsOpen(false)}
-                className={`text-2xl font-display font-medium tracking-tight transition-colors ${
+                className={`text-lg font-display font-medium tracking-tight py-3 min-h-[48px] transition-colors ${
                   isActive ? "text-white" : "text-neutral-400 hover:text-white"
                 }`}
               >
@@ -209,8 +204,14 @@ export default function Navigation() {
         </nav>
 
         <div className="pt-6 border-t border-white/[0.06] flex flex-col gap-2 text-xs text-neutral-500 font-sans">
+          <span className="text-white font-medium">VIYAAN AI</span>
           <span>Intelligence beyond the human mind.</span>
-          <span className="text-neutral-400">viyaan.ai.team@gmail.com</span>
+          <a
+            href="mailto:viyaan.ai.team@gmail.com"
+            className="text-neutral-400 hover:text-white transition-colors"
+          >
+            viyaan.ai.team@gmail.com
+          </a>
         </div>
       </div>
     </>

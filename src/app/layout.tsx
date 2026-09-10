@@ -56,7 +56,6 @@ export const metadata: Metadata = {
 import { getDb } from "@/lib/db";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import WebVitalsTracker from "@/components/WebVitalsTracker";
-import CustomCursor from "@/components/CustomCursor";
 
 export default async function RootLayout({
   children,
@@ -91,7 +90,6 @@ export default async function RootLayout({
           cookieConsentEnabled={cookieConsentEnabled}
         />
         <WebVitalsTracker />
-        <CustomCursor />
         {children}
       </body>
     </html>

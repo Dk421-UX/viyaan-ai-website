@@ -27,15 +27,15 @@ export default function BackNav({
   };
 
   return (
-    <div className={`flex items-center ${className}`}>
+    <div className={`flex items-center mb-6 sm:mb-8 ${className}`}>
       <button
         onClick={handleBack}
         type="button"
         aria-label={label}
-        className="back-nav-link group"
+        className="inline-flex items-center gap-2 min-h-[44px] py-1 text-xs text-neutral-400 hover:text-white transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00B2FF] rounded font-sans cursor-pointer group"
       >
-        <ArrowLeft className="w-3.5 h-3.5 shrink-0 text-neutral-400 group-hover:text-white" />
-        <span>{label}</span>
+        <ArrowLeft className="w-3.5 h-3.5 shrink-0 text-neutral-500 group-hover:text-white transition-all duration-150 group-hover:-translate-x-0.5" />
+        <span className="tracking-tight">{label}</span>
       </button>
     </div>
   );

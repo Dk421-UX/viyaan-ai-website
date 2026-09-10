@@ -1,12 +1,14 @@
+import "server-only";
 import { neon } from "@neondatabase/serverless";
 
 function getDatabaseUrl(): string | null {
-  return (
+  const value =
     process.env.DATABASE_URL ||
     process.env.POSTGRES_URL ||
     process.env.NEON_DATABASE_URL ||
-    null
-  );
+    "";
+
+  return value.trim() || null;
 }
 
 export const isNeonConfigured = !!getDatabaseUrl();
@@ -16,16 +18,52 @@ export function getNeonSql() {
   if (!url) {
     throw new Error("Neon DATABASE_URL environment variable is missing.");
   }
+
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(url);
+  } catch {
+    throw new Error("Neon DATABASE_URL is malformed. Use the connection string from the active Neon branch.");
+  }
+
+  if (
+    (parsedUrl.protocol !== "postgres:" && parsedUrl.protocol !== "postgresql:") ||
+    !parsedUrl.hostname ||
+    !parsedUrl.username ||
+    !parsedUrl.password
+  ) {
+    throw new Error("Neon DATABASE_URL is incomplete. It must include a PostgreSQL protocol, host, username, and password.");
+  }
+
   return neon(url);
 }
 
 // Safe diagnostics (never returns credentials or host secrets)
 export function getNeonDiagnostics() {
   const url = getDatabaseUrl();
+  let configurationError: string | null = null;
+
+  if (url) {
+    try {
+      const parsedUrl = new URL(url);
+      if (
+        (parsedUrl.protocol !== "postgres:" && parsedUrl.protocol !== "postgresql:") ||
+        !parsedUrl.hostname ||
+        !parsedUrl.username ||
+        !parsedUrl.password
+      ) {
+        configurationError = "DATABASE_URL is incomplete";
+      }
+    } catch {
+      configurationError = "DATABASE_URL is malformed";
+    }
+  }
+
   return {
     isConfigured: !!url,
     hasDatabaseUrl: !!url,
     isProduction: process.env.NODE_ENV === "production",
+    configurationError,
   };
 }
 
@@ -55,7 +93,10 @@ export async function verifyNeonConnection() {
       error: initialized ? null : "Tables not initialized. Please run neon/schema.sql."
     };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Neon connection error";
+    const rawMessage = err instanceof Error ? err.message : "Neon connection error";
+    const message = /fetch failed/i.test(rawMessage)
+      ? "Neon HTTPS request failed. Verify the active Neon DATABASE_URL and outbound HTTPS access from the deployment."
+      : rawMessage;
     return { connected: false, initialized: false, error: message };
   }
 }
@@ -198,6 +239,11 @@ export async function getDbFromNeon() {
     };
   } catch (error) {
     console.error("[getDbFromNeon] Error querying Neon database:", error);
+    if (error instanceof Error && /fetch failed/i.test(error.message)) {
+      throw new Error(
+        "Neon HTTPS request failed. Verify the active Neon DATABASE_URL and outbound HTTPS access from the deployment."
+      );
+    }
     throw error;
   }
 }
@@ -733,4 +779,3 @@ export async function recordAdminLoginNeon() {
     // Optional telemetry update
   }
 }
-

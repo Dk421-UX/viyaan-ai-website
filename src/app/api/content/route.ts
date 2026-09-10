@@ -46,12 +46,20 @@ async function ensureDbInit() {
 }
 
 export async function GET() {
-  await ensureDbInit();
-  const data = await getDb();
-  if (!data) {
-    return NextResponse.json({ error: "Failed to load database" }, { status: 500 });
+  try {
+    await ensureDbInit();
+    const data = await getDb();
+    if (!data) {
+      return NextResponse.json({ error: "Failed to load database" }, { status: 500 });
+    }
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error("[API content] Database load failed:", error);
+    return NextResponse.json(
+      { error: "Database unavailable. Verify the server-side Neon DATABASE_URL configuration." },
+      { status: 503 }
+    );
   }
-  return NextResponse.json(data);
 }
 
 export async function POST(request: Request) {
