@@ -20,42 +20,38 @@ const playfair = Playfair_Display({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL("https://viyaan.ai"),
-  title: "Viyaan AI — Intelligence Beyond the Human Mind",
-  description:
-    "Official digital headquarters of Viyaan AI, an Artificial Intelligence product and research company combining AI, psychology, product design, and automation to amplify human potential.",
-  keywords: [
-    "Viyaan AI",
-    "JOI Companion",
-    "Human OS",
-    "AI Research",
-    "Dharani Kumar",
-    "Artificial Intelligence",
-    "Cognitive Psychology",
-    "Human-centered AI",
-  ],
-  authors: [{ name: "Dharani Kumar" }],
-  openGraph: {
-    title: "Viyaan AI — Intelligence Beyond the Human Mind",
-    description:
-      "Official digital headquarters of Viyaan AI, a next-generation AI product and research company.",
-    type: "website",
-    url: "https://viyaan.ai",
-    images: [{ url: "/logo.png" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Viyaan AI — Intelligence Beyond the Human Mind",
-    description:
-      "An AI product and research company building JOI Companion, Human OS, and Viyaan Future.",
-    images: ["/logo.png"],
-  },
-};
-
 import { getDb } from "@/lib/db";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import WebVitalsTracker from "@/components/WebVitalsTracker";
+
+const defaultWebsiteUrl = "https://viyaan-ai-website.onrender.com";
+
+function websiteUrl(value: unknown) {
+  if (typeof value !== "string") return defaultWebsiteUrl;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString().replace(/\/$/, "") : defaultWebsiteUrl;
+  } catch {
+    return defaultWebsiteUrl;
+  }
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  let url = defaultWebsiteUrl;
+  try {
+    const db = await getDb();
+    url = websiteUrl(db.companyInfo?.websiteUrl);
+  } catch {}
+
+  return {
+    metadataBase: new URL(url),
+    title: "Viyaan AI | AI That Helps People Learn Better",
+    description: "Building intelligent learning solutions through AI, data science, and purposeful innovation.",
+    alternates: { canonical: url },
+    openGraph: { title: "Viyaan AI | AI That Helps People Learn Better", description: "Building intelligent learning solutions through AI, data science, and purposeful innovation.", type: "website", url, images: [{ url: "/logo.png" }] },
+    twitter: { card: "summary_large_image", title: "Viyaan AI | AI That Helps People Learn Better", description: "Beyond Learning. Beyond Limits.", images: ["/logo.png"] },
+  };
+}
 
 export default async function RootLayout({
   children,
@@ -64,10 +60,12 @@ export default async function RootLayout({
 }>) {
   let gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "";
   let cookieConsentEnabled = true;
+  let canonicalUrl = defaultWebsiteUrl;
 
   try {
     const db = await getDb();
     const analytics = db.analytics || {};
+    canonicalUrl = websiteUrl(db.companyInfo?.websiteUrl);
     if (!gaMeasurementId && analytics.gaTrackingId) {
       gaMeasurementId = analytics.gaTrackingId;
     }
@@ -84,7 +82,31 @@ export default async function RootLayout({
       className={`${inter.variable} ${outfit.variable} ${playfair.variable} h-full antialiased dark`}
       style={{ colorScheme: "dark" }}
     >
-      <body className="min-h-full bg-[#050505] text-zinc-100 flex flex-col font-sans">
+      <body className="min-h-full bg-[#040711] text-zinc-100 flex flex-col font-sans">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "EducationalOrganization",
+              "name": "Viyaan AI",
+              "url": canonicalUrl,
+              "logo": `${canonicalUrl}/logo.png`,
+              "description":
+                "Viyaan AI builds AI-powered learning experiences that help people understand concepts, organize their preparation, strengthen knowledge retention, and develop independent problem-solving skills.",
+              "slogan": "Beyond Learning. Beyond Limits.",
+              "founder": {
+                "@type": "Person",
+                "name": "Dharani Kumar"
+              },
+              "sameAs": [
+                "https://www.linkedin.com/company/viyaan-ai",
+                "https://www.linkedin.com/in/dharani-kumar-49622b349",
+                "https://x.com/by_dharani"
+              ]
+            }),
+          }}
+        />
         <GoogleAnalytics
           measurementId={gaMeasurementId}
           cookieConsentEnabled={cookieConsentEnabled}

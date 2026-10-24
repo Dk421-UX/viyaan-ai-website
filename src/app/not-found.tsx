@@ -19,7 +19,7 @@ export default function NotFound() {
   }, [pathname]);
 
   return (
-    <div className="relative min-h-screen bg-[#050505] text-[#FFFFFF] flex flex-col overflow-x-hidden">
+    <div className="relative min-h-screen bg-[#040711] text-[#FFFFFF] flex flex-col overflow-x-hidden">
       <Navigation />
 
       <main className="flex-1 flex flex-col justify-center items-center page-header-offset pb-20">

@@ -3,7 +3,6 @@
 import React from "react";
 import Link from "next/link";
 import Navigation from "@/components/Navigation";
-import NewsletterSection from "@/components/NewsletterSection";
 import Footer from "@/components/Footer";
 import SiteContainer from "@/components/SiteContainer";
 import PageIntro from "@/components/PageIntro";
@@ -16,22 +15,22 @@ interface ResearchClientProps {
 
 export default function ResearchClient({ papers }: ResearchClientProps) {
   return (
-    <div className="relative min-h-screen bg-[#050505] text-[#FFFFFF] flex flex-col overflow-x-hidden selection:bg-[#0066FF]/30">
+    <div className="relative min-h-screen bg-[#040711] text-[#FFFFFF] flex flex-col overflow-x-hidden selection:bg-[#0066FF]/35">
       <Navigation />
 
       {/* Subtle atmospheric ambient glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-gradient-to-b from-[#0066FF]/8 to-transparent blur-[140px] pointer-events-none -z-10" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-gradient-to-b from-[#0066FF]/10 to-transparent blur-[140px] pointer-events-none -z-10" />
 
       <main className="flex-1 page-header-offset">
         <SiteContainer>
           {/* Back navigation */}
-          <BackNav label="Back" fallbackHref="/" />
+          <BackNav label="Back to Home" fallbackHref="/" />
 
           {/* Editorial Page Introduction */}
           <PageIntro
-            eyebrow="Research"
-            title="Published Manuscripts"
-            description="Architectural papers, cognitive models, and retrieval benchmarks released by the Viyaan AI research team."
+            eyebrow="Research & Methodology"
+            title="Cognitive Architectures & Information Retrieval"
+            description="Explorations in semantic chunking, retrieval-augmented education pipelines, and memory structures released by the Viyaan AI team."
             className="mb-12 sm:mb-16"
           />
 
@@ -107,8 +106,6 @@ export default function ResearchClient({ papers }: ResearchClientProps) {
           </div>
         </SiteContainer>
       </main>
-
-      <NewsletterSection />
       <Footer />
     </div>
   );

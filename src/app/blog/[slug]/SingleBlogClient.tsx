@@ -3,7 +3,6 @@
 import React from "react";
 import Link from "next/link";
 import Navigation from "@/components/Navigation";
-import NewsletterSection from "@/components/NewsletterSection";
 import Footer from "@/components/Footer";
 import SiteContainer from "@/components/SiteContainer";
 import BackNav from "@/components/BackNav";
@@ -30,7 +29,7 @@ export default function SingleBlogClient({ post }: SingleBlogClientProps) {
   }
 
   return (
-    <div className="relative min-h-screen bg-[#050505] text-[#FFFFFF] flex flex-col overflow-x-hidden selection:bg-[#0066FF]/30">
+    <div className="relative min-h-screen bg-[#040711] text-[#FFFFFF] flex flex-col overflow-x-hidden selection:bg-[#0066FF]/35">
       <Navigation />
 
       {/* Subtle atmospheric ambient glow */}
@@ -90,8 +89,6 @@ export default function SingleBlogClient({ post }: SingleBlogClientProps) {
           </article>
         </SiteContainer>
       </main>
-
-      <NewsletterSection />
       <Footer />
     </div>
   );

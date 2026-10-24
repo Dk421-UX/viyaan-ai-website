@@ -3,7 +3,7 @@ services:
     name: viyaan-ai-website
     env: node
     plan: free
-    buildCommand: npm install && npm run build
+    buildCommand: npm install && npm run migrate:linkedin && npm run build
     startCommand: npm start
     envVars:
       - key: NODE_ENV

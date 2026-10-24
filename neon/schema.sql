@@ -103,18 +103,33 @@ CREATE TABLE IF NOT EXISTS public.homepage (
 CREATE TABLE IF NOT EXISTS public.company_settings (
     id TEXT PRIMARY KEY DEFAULT 'only_one',
     name TEXT NOT NULL DEFAULT 'Viyaan AI',
-    tagline TEXT,
+    tagline TEXT DEFAULT 'Beyond Learning. Beyond Limits.',
     description TEXT,
     email TEXT DEFAULT 'viyaan.ai.team@gmail.com',
     location TEXT DEFAULT 'Chennai, India / Remote',
+    website_url TEXT DEFAULT 'https://viyaan-ai-website.onrender.com/',
     linkedin_company TEXT DEFAULT 'https://www.linkedin.com/company/viyaan-ai',
+    linkedin_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    linkedin_description TEXT,
+    linkedin_logo_url TEXT,
+    linkedin_data_source TEXT NOT NULL DEFAULT 'manual',
     linkedin_founder TEXT DEFAULT 'https://www.linkedin.com/in/dharani-kumar-49622b349',
     twitter_founder TEXT DEFAULT 'https://x.com/by_dharani',
     response_time TEXT DEFAULT '2 business days',
     founder_image TEXT DEFAULT '/founder.jpeg',
+    copyright_text TEXT DEFAULT '© 2026 Viyaan AI. Beyond Learning. Beyond Limits. All rights reserved.',
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT single_company_row CHECK (id = 'only_one')
 );
+
+-- LinkedIn integration settings added after initial deployments. These remain
+-- manual unless an authorised LinkedIn API integration is configured.
+ALTER TABLE public.company_settings ADD COLUMN IF NOT EXISTS linkedin_enabled BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE public.company_settings ADD COLUMN IF NOT EXISTS linkedin_description TEXT;
+ALTER TABLE public.company_settings ADD COLUMN IF NOT EXISTS linkedin_logo_url TEXT;
+ALTER TABLE public.company_settings ADD COLUMN IF NOT EXISTS linkedin_data_source TEXT NOT NULL DEFAULT 'manual';
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS sort_order INT DEFAULT 0;
+ALTER TABLE public.homepage_settings ADD COLUMN IF NOT EXISTS about_purpose TEXT DEFAULT 'To make learning more effective, personalised, and accessible through purposeful AI innovation.';
 
 -- 9. NAVIGATION TABLE
 CREATE TABLE IF NOT EXISTS public.navigation (
@@ -184,12 +199,16 @@ CREATE TABLE IF NOT EXISTS public.seo_settings (
 -- 16. HOMEPAGE SETTINGS TABLE
 CREATE TABLE IF NOT EXISTS public.homepage_settings (
     id TEXT PRIMARY KEY DEFAULT 'main',
-    hero_heading TEXT DEFAULT 'Intelligence Beyond the Human Mind.',
-    hero_subheading TEXT DEFAULT 'Viyaan AI engineers cognitive architectures, emotional intelligence systems, and future-continuity platforms — built for depth over noise.',
-    hero_cta TEXT DEFAULT 'Explore Our Ecosystem',
-    hero_cta_link TEXT DEFAULT '/products',
-    hero_second_cta TEXT DEFAULT 'Read Research',
-    hero_second_cta_link TEXT DEFAULT '/research',
+    hero_heading TEXT DEFAULT 'AI That Helps People Learn Better.',
+    hero_subheading TEXT DEFAULT 'Building intelligent learning experiences through AI, data science, and purposeful innovation.',
+    hero_cta TEXT DEFAULT 'Explore Projects',
+    hero_cta_link TEXT DEFAULT '#projects',
+    hero_second_cta TEXT DEFAULT 'Our Vision',
+    hero_second_cta_link TEXT DEFAULT '#vision',
+    about_heading TEXT DEFAULT 'Building Technology With Purpose.',
+    about_text TEXT DEFAULT 'Viyaan AI focuses on developing practical AI-powered solutions that make learning more effective, personalised, and accessible.',
+    vision_heading TEXT DEFAULT 'Beyond Answers. Towards Understanding.',
+    vision_text TEXT DEFAULT 'We believe AI should do more than provide information. It should help people build understanding, think independently, and continue learning.',
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT single_homepage_settings_row CHECK (id = 'main')
 );

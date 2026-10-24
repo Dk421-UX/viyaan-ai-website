@@ -82,13 +82,55 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized access" }, { status: 401 });
     }
 
+function isValidHttpUrl(str: string): boolean {
+  if (!str || typeof str !== "string") return false;
+  try {
+    const url = new URL(str.trim());
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function isValidDestinationUrl(str: string): boolean {
+  if (!str || typeof str !== "string") return true;
+  const trimmed = str.trim();
+  if (trimmed === "" || trimmed.startsWith("/") || trimmed.startsWith("#")) {
+    if (/^\s*(javascript|data|vbscript):/i.test(trimmed)) return false;
+    return true;
+  }
+  return isValidHttpUrl(trimmed);
+}
+
     // 2. Perform CMS Action in Neon PostgreSQL if configured (Primary)
     if (isNeonConfigured) {
       try {
         switch (action) {
-          case "updateSettings":
+          case "updateSettings": {
+            const websiteUrl = data.websiteUrl || data.website_url;
+            if (websiteUrl && !isValidHttpUrl(websiteUrl)) {
+              return NextResponse.json(
+                { error: "Invalid canonical website URL. Must be a valid URL starting with http:// or https://" },
+                { status: 400 }
+              );
+            }
+            const linkedinUrl = data.linkedinCompany || data.linkedin_company;
+            if (linkedinUrl && !isValidHttpUrl(linkedinUrl)) {
+              return NextResponse.json(
+                { error: "Invalid official LinkedIn URL. Must be a valid URL starting with http:// or https://" },
+                { status: 400 }
+              );
+            }
+            const linkedinLogoUrl = data.linkedinLogoUrl || data.linkedin_logo_url;
+            if (linkedinLogoUrl && !isValidHttpUrl(linkedinLogoUrl)) {
+              return NextResponse.json(
+                { error: "Invalid LinkedIn logo URL. Must be a valid URL starting with http:// or https://" },
+                { status: 400 }
+              );
+            }
             await updateCompanySettingsNeon(data);
             break;
+          }
 
           case "saveNavigation":
             await saveNavigationNeon(data);
@@ -98,9 +140,18 @@ export async function POST(request: Request) {
             await saveSeoSettingsNeon(data);
             break;
 
-          case "saveProduct":
+          case "saveProduct": {
+            if (data.url && typeof data.url === "string" && data.url.trim() !== "") {
+              if (!isValidHttpUrl(data.url.trim())) {
+                return NextResponse.json(
+                  { error: "Invalid project destination URL. Only safe http:// or https:// web destinations are allowed." },
+                  { status: 400 }
+                );
+              }
+            }
             await saveProductNeon(data);
             break;
+          }
 
           case "savePost":
             await savePostNeon(data);
@@ -164,6 +215,11 @@ export async function POST(request: Request) {
         }
 
         const freshDb = await getDb();
+        try {
+          await writeLocalDb(freshDb);
+        } catch (localErr) {
+          console.warn("[CMS] Local fallback sync notice:", localErr);
+        }
         return NextResponse.json({ success: true, db: freshDb });
       } catch (neonError: any) {
         console.error("[CMS Neon Error] Action write error:", neonError);

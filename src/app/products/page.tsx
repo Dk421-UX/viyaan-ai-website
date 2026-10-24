@@ -7,7 +7,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const seo = db.seo?.products || {};
   return {
     title: seo.title || "Products — Viyaan AI",
-    description: seo.description || "Explore the Viyaan AI product ecosystem: JOI Companion AI, Human OS, and Viyaan Future."
+    description: seo.description || "Explore Viyaan AI learning projects for revision, preparation, and academic planning."
   };
 }
 
@@ -20,10 +20,7 @@ export default async function ProductsPage() {
   const allProducts = db.products || [];
   console.log(`[Products Page Returned Rows] Total products fetched from database: ${allProducts.length}`);
   
-  let publishedProducts = allProducts.filter((p: any) => p.status?.toLowerCase() === "published");
-  if (publishedProducts.length === 0 && allProducts.length > 0) {
-    publishedProducts = allProducts;
-  }
+  const publishedProducts = allProducts.filter((p: any) => p.status?.toLowerCase() === "published");
 
   return <ProductsClient products={publishedProducts} />;
 }

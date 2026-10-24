@@ -72,13 +72,13 @@ export default function NewsletterSection({ className = "" }: NewsletterSectionP
     "Receive research updates, product releases, and architectural dispatches directly in your inbox.";
 
   return (
-    <section className={`relative border-t border-white/[0.06] bg-[#07070A] py-[clamp(4.5rem,7vw,6.5rem)] ${className}`}>
+    <section className={`relative border-t border-white/[0.08] bg-[#060D1F]/60 py-[clamp(4.5rem,7vw,6.5rem)] ${className}`}>
       <SiteContainer>
         <div className="grid grid-cols-1 lg:grid-cols-12 lg:items-center gap-8 lg:gap-10">
           {/* Left Column: Heading & Description */}
           <div className="flex flex-col gap-3 max-w-xl lg:col-span-6">
             <span className="text-[11px] uppercase tracking-widest text-[#00B2FF] font-mono font-medium">
-              Dispatches
+              Research & Project Dispatches
             </span>
             <h3 className="font-display font-semibold text-xl sm:text-2xl text-white tracking-tight">
               {title}

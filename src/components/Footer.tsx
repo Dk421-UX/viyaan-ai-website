@@ -1,110 +1,44 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import BrandMark from "./BrandMark";
 import SiteContainer from "./SiteContainer";
-import { ArrowUpRight } from "lucide-react";
+import LinkedInIcon from "./LinkedInIcon";
+
+type Company = { tagline?: string; linkedinCompany?: string; linkedinEnabled?: boolean; copyrightText?: string };
 
 export default function Footer() {
-  const [company, setCompany] = useState<any>(null);
+  const [company, setCompany] = useState<Company>({});
 
   useEffect(() => {
     fetch("/api/content")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data?.companyInfo) {
-          setCompany(data.companyInfo);
-        }
-      })
-      .catch((e) => console.error("Error loading company info for footer:", e));
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => setCompany(data?.companyInfo || {}))
+      .catch(() => undefined);
   }, []);
 
-  const tagline = company?.tagline || "Intelligence Beyond the Human Mind.";
-  const linkedin = company?.linkedinCompany || "https://www.linkedin.com/company/viyaan-ai";
-  const twitter = company?.twitterFounder || "https://x.com/by_dharani";
+  const linkedin = company.linkedinCompany || "https://www.linkedin.com/company/viyaan-ai";
 
   return (
-    <footer className="relative border-t border-white/[0.06] bg-[#050505] pt-[clamp(4rem,6vw,6rem)] pb-10 mt-auto">
+    <footer className="border-t border-white/[0.08] bg-[#030612] py-10">
       <SiteContainer>
-        {/* Main 3-Column Architectural Row */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-10 md:gap-8 items-start">
-          {/* Column 1: Brand & Positioning (~40%) */}
-          <div className="md:col-span-5 flex flex-col gap-3">
-            <Link
-              href="/"
-              className="font-display font-semibold text-sm tracking-tight text-white hover:opacity-90 transition-opacity inline-flex items-center gap-2"
-            >
-              <span>VIYAAN AI</span>
-            </Link>
-            <p className="font-sans text-xs sm:text-sm text-neutral-400 leading-relaxed max-w-sm">
-              {tagline}
-            </p>
+        <div className="grid gap-8 sm:grid-cols-[1fr_auto] sm:items-end">
+          <div>
+            <Link href="/" className="inline-flex" aria-label="Viyaan AI home"><BrandMark /></Link>
+            <p className="mt-3 max-w-md text-sm leading-6 text-slate-400">{company.tagline || "Beyond Learning. Beyond Limits."}</p>
           </div>
-
-          {/* Column 2: Navigation Links (~35%) */}
-          <div className="md:col-span-4 flex flex-col gap-3">
-            <span className="text-[11px] uppercase tracking-wider text-neutral-500 font-mono">
-              Directory
-            </span>
-            <nav
-              className="grid grid-cols-2 gap-y-2.5 gap-x-4 text-xs text-neutral-400 font-sans"
-              aria-label="Footer navigation"
-            >
-              <Link href="/products" className="hover:text-white transition-colors py-0.5">
-                Products
-              </Link>
-              <Link href="/research" className="hover:text-white transition-colors py-0.5">
-                Research
-              </Link>
-              <Link href="/lab" className="hover:text-white transition-colors py-0.5">
-                Lab
-              </Link>
-              <Link href="/founder" className="hover:text-white transition-colors py-0.5">
-                Founder
-              </Link>
-              <Link href="/blog" className="hover:text-white transition-colors py-0.5">
-                Blog
-              </Link>
-              <Link href="/contact" className="hover:text-white transition-colors py-0.5">
-                Contact
-              </Link>
-            </nav>
-          </div>
-
-          {/* Column 3: Social & Ecosystem (~25%) */}
-          <div className="md:col-span-3 flex flex-col gap-3">
-            <span className="text-[11px] uppercase tracking-wider text-neutral-500 font-mono">
-              Network
-            </span>
-            <div className="flex flex-col gap-2 text-xs text-neutral-400 font-sans">
-              <a
-                href={linkedin}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-white transition-colors inline-flex items-center gap-1.5 py-0.5"
-              >
-                <span>LinkedIn</span>
-                <ArrowUpRight className="w-3 h-3 text-neutral-600" />
-              </a>
-              <a
-                href={twitter}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-white transition-colors inline-flex items-center gap-1.5 py-0.5"
-              >
-                <span>Twitter / X</span>
-                <ArrowUpRight className="w-3 h-3 text-neutral-600" />
-              </a>
-            </div>
+          <div className="flex flex-wrap gap-x-5 gap-y-3 text-sm text-slate-400">
+            <Link href="/#about" className="hover:text-white">About</Link>
+            <Link href="/#projects" className="hover:text-white">Projects</Link>
+            <Link href="/contact" className="hover:text-white">Contact</Link>
+            {company.linkedinEnabled !== false ? <a href={linkedin} target="_blank" rel="noopener noreferrer" aria-label="Viyaan AI on LinkedIn (opens in a new tab)" className="inline-flex items-center gap-1.5 hover:text-white">
+              <LinkedInIcon className="size-4" /> LinkedIn
+            </a> : null}
           </div>
         </div>
-
-        {/* Bottom Metadata Row */}
-        <div className="mt-14 pt-7 border-t border-white/[0.05] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xs text-neutral-500 font-sans">
-          <span>© 2026 Viyaan AI. All rights reserved.</span>
-          <span className="text-neutral-500">
-            Building intelligent systems for human understanding.
-          </span>
+        <div className="mt-8 border-t border-white/[0.08] pt-5 text-xs text-slate-500">
+          {company.copyrightText || "© 2026 Viyaan AI. All rights reserved."}
         </div>
       </SiteContainer>
     </footer>

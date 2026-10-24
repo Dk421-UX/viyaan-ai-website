@@ -1,15 +1,20 @@
 {
   "companyInfo": {
     "name": "Viyaan AI",
-    "tagline": "Intelligence Beyond the Human Mind.",
-    "description": "Viyaan AI is a technology startup focused on building intelligent systems using Artificial Intelligence, Data Science, and Automation. Our mission is to extend human capabilities through intelligent technology and data-driven innovation.",
+    "tagline": "Beyond Learning. Beyond Limits.",
+    "description": "Building intelligent learning solutions through AI, data science, and purposeful innovation.",
     "email": "viyaan.ai.team@gmail.com",
     "location": "Chennai, India / Remote",
     "linkedinCompany": "https://www.linkedin.com/company/viyaan-ai",
     "linkedinFounder": "https://www.linkedin.com/in/dharani-kumar-49622b349",
     "twitterFounder": "https://x.com/by_dharani",
     "responseTime": "2 business days",
-    "founderImage": "/founder.jpeg"
+    "founderImage": "/founder.jpeg",
+    "mission": "To make learning more effective, personalized, and accessible by building intelligent learning experiences that help people understand concepts, strengthen knowledge retention, identify learning gaps, and develop independent problem-solving skills.",
+    "vision": "To build a future in which intelligent technology helps every learner move beyond memorization toward deeper understanding, independent thinking, and continuous growth.",
+    "philosophy": "AI should do more than provide answers. It should help people develop genuine understanding.",
+    "websiteUrl": "https://viyaan-ai-website.onrender.com/",
+    "copyrightText": "© 2026 Viyaan AI. Beyond Learning. Beyond Limits. All rights reserved."
   },
   "navigation": [
     {
@@ -17,20 +22,12 @@
       "href": "/"
     },
     {
-      "label": "Products",
-      "href": "/products"
+      "label": "About",
+      "href": "/#about"
     },
     {
-      "label": "Research",
-      "href": "/research"
-    },
-    {
-      "label": "Innovation Lab",
-      "href": "/lab"
-    },
-    {
-      "label": "Founder",
-      "href": "/founder"
+      "label": "Projects",
+      "href": "/#projects"
     },
     {
       "label": "Contact",
@@ -39,40 +36,88 @@
   ],
   "seo": {
     "home": {
-      "title": "Viyaan AI — Intelligence Beyond the Human Mind",
-      "description": "Building next-generation intelligent systems with emotional awareness, psychology-first design, and long-term reflection retention."
+      "title": "Viyaan AI | AI-Powered Education and Intelligent Learning",
+      "description": "Viyaan AI builds AI-powered learning experiences using Artificial Intelligence, Data Science, and innovative learning techniques to support better understanding, focused revision, and independent learning."
     },
     "products": {
-      "title": "Products Suite — Viyaan AI",
-      "description": "Explore the Viyaan AI product ecosystem: JOI Companion AI, Human OS, and Viyaan Future."
+      "title": "Educational Projects & Intelligent Systems — Viyaan AI",
+      "description": "Explore Viyaan AI's learning technology portfolio: ExamRAG, EXAMORACLE, and Attendance Intelligence, alongside our broader intelligent system experiments."
     },
     "research": {
-      "title": "Research Frontiers — Viyaan AI",
-      "description": "Exploring cognitive architectures, human-computer symbiosis, and private future continuity."
+      "title": "Learning & Cognitive Research — Viyaan AI",
+      "description": "Explorations into retrieval-augmented educational systems, long-term memory retention, and cognitive architectures."
     },
     "lab": {
-      "title": "Innovation Lab — Viyaan AI",
-      "description": "Experimental tools and utility applications built in public by Viyaan AI."
+      "title": "Innovation Lab & Sandbox — Viyaan AI",
+      "description": "Experimental educational tools, student productivity models, and interactive learning prototypes built in public."
     },
     "founder": {
       "title": "Founding Architect — Viyaan AI",
-      "description": "Dharani Kumar, founder of Viyaan AI, building systems that extend human capability."
+      "description": "Dharani Kumar, founder of Viyaan AI, building AI systems dedicated to deeper understanding and independent learning."
     },
     "contact": {
-      "title": "Connect — Viyaan AI",
-      "description": "Connect with the Viyaan AI team for inquiries, collaborations, and career opportunities."
+      "title": "Contact & Educational Collaborations — Viyaan AI",
+      "description": "Connect with Viyaan AI for educational partnerships, platform sandbox access, and technical inquiries."
     },
     "blog": {
-      "title": "Insights & News — Viyaan AI",
-      "description": "Latest updates, announcements, and thoughts on AI engineering from Viyaan AI."
+      "title": "Insights on Learning & AI — Viyaan AI",
+      "description": "Articles, technical updates, and architectural notes on AI in education from the Viyaan AI team."
     }
   },
   "products": [
     {
+      "id": "examrag",
+      "name": "ExamRAG",
+      "tagline": "Retrieval-Augmented Study Revision",
+      "description": "An AI-powered learning project designed to help users work with educational materials and access relevant information.",
+      "features": [
+        "Educational PDF ingestion and document parsing",
+        "Embedding-based semantic retrieval and context reranking",
+        "Context-grounded answer generation tailored for revision",
+        "Local model inference support (Ollama-compatible pipeline)"
+      ],
+      "dataFlow": "Processes syllabus textbooks and lecture notes into semantic vector chunks to retrieve precise citations and synthesize revision answers.",
+      "url": "/products#examrag",
+      "status": "published",
+      "sortOrder": 1
+    },
+    {
+      "id": "examoracle",
+      "name": "EXAMORACLE",
+      "tagline": "Study Habit & Readiness Diagnostics",
+      "description": "A study and exam-preparation project focused on preparation insights and identifying areas that may need improvement.",
+      "features": [
+        "Study habit inputs and consistency tracking",
+        "Revision-quality and confidence indicators",
+        "Structured preparation feedback and rhythm recommendations",
+        "Explanatory reflection summaries to identify study gaps"
+      ],
+      "dataFlow": "Transforms learner self-evaluations into structured study readiness indicators without claiming predictive test score certainty.",
+      "url": "/products#examoracle",
+      "status": "published",
+      "sortOrder": 2
+    },
+    {
+      "id": "attendance-intelligence",
+      "name": "Attendance Intelligence",
+      "tagline": "Academic Planning & Margin Modeling",
+      "description": "A practical tool for understanding attendance calculations and planning attendance more effectively.",
+      "features": [
+        "Attendance percentage calculations and threshold status indicators",
+        "Missed-class tracking and margin-of-safety modeling",
+        "Subject-level breakdowns and semester planning calculators",
+        "Simulated schedule forecasts to avoid attendance shortfalls"
+      ],
+      "dataFlow": "Calculates required classes based on institution threshold criteria (e.g. standard 75% baseline) to provide clear semester visibility.",
+      "url": "/products#attendance-intelligence",
+      "status": "published",
+      "sortOrder": 3
+    },
+    {
       "id": "joi",
       "name": "JOI Companion AI",
-      "tagline": "Talk to JOI // Powered by Viyaan AI",
-      "description": "An emotionally intelligent companion application. JOI is designed for supportive conversations, offering customizable emotional states (calm, comforting, curious, playful, reflective, concerned, peaceful), ambient audio toggle, and text or microphone voice inputs within an atmospheric visual canvas.",
+      "tagline": "Talk to JOI // Conversational Presence & Audio Atmosphere",
+      "description": "An emotionally intelligent companion application. JOI is designed for supportive conversations, offering customizable emotional states, ambient audio toggle, and text or microphone voice inputs within an atmospheric visual canvas.",
       "features": [
         "Customizable emotional state overrides",
         "Ambient soundscapes and WebGL-rendered presence",
@@ -87,7 +132,7 @@
       "id": "human-os",
       "name": "Human OS",
       "tagline": "The Operating System for Understanding Yourself",
-      "description": "A psychology-first self-reflection platform designed to help users track reflections and understand daily patterns. Human OS provides daily logs tracking writing habits, habit entries, and accessing secure reflection archives.",
+      "description": "A psychology-first self-reflection platform designed to help users track reflections and understand daily patterns through daily logs, habit entries, and secure archives.",
       "features": [
         "Reflective journal workspace ('Write')",
         "Cognitive analysis mapping ('Understand')",
@@ -102,7 +147,7 @@
       "id": "future",
       "name": "Viyaan Future",
       "tagline": "Private Future-Self Continuity",
-      "description": "Viyaan AI's innovation and continuity platform focused on long-term reflection retention. It explores future-self continuity by allowing users to write reflections and maintain a private, secure timeline that remembers details over time.",
+      "description": "Viyaan AI's innovation and continuity platform focused on long-term reflection retention, allowing users to write reflections and maintain a private timeline over time.",
       "features": [
         "Secure email-authenticated timeline access",
         "Private digital future-self continuity diaries",
@@ -145,7 +190,48 @@
       "pdfUrl": ""
     }
   ],
-  "labProjects": [],
+  "labProjects": [
+    {
+      "id": "lab-attendance",
+      "title": "Attendance Intelligence & Risk Margin Forecaster",
+      "type": "Academic Planning Instrument",
+      "statusText": "Interactive Model",
+      "description": "Algorithmic modeling tool helping students analyze semester attendance risk margins, calculate required lecture attendance against institutional thresholds (75%), and simulate schedule impact.",
+      "tags": [
+        "Education",
+        "Productivity",
+        "Simulation"
+      ],
+      "status": "published"
+    },
+    {
+      "id": "lab-examrag",
+      "title": "ExamRAG Semantic Document Retrieval Pipeline",
+      "type": "RAG Retrieval Pipeline",
+      "statusText": "Prototype Pipeline",
+      "description": "Retrieval-Augmented Generation testbed exploring syllabus-grounded chunking, vector indexing, and citation-anchored question answering with local Ollama inference capability.",
+      "tags": [
+        "RAG",
+        "Education",
+        "NLP",
+        "Local LLM"
+      ],
+      "status": "published"
+    },
+    {
+      "id": "lab-examoracle",
+      "title": "EXAMORACLE Study Habit & Readiness Matrix",
+      "type": "Cognitive Diagnostics",
+      "statusText": "Experimental Sandbox",
+      "description": "Exploratory self-reporting diagnostic engine evaluating revision consistency, confidence rhythms, and subject study distributions without making ungrounded score predictions.",
+      "tags": [
+        "Cognition",
+        "Self-Reflection",
+        "Preparation"
+      ],
+      "status": "published"
+    }
+  ],
   "careers": {
     "title": "Connect with Our Mission",
     "description": "We look for individuals motivated by craft, focus, and long-term values. If you align with our philosophy of building technology that amplifies human potential, we welcome you to join our network.",
@@ -163,12 +249,17 @@
     }
   ],
   "homepage": {
-    "heroHeading": "Intelligence Beyond the Human Mind.",
-    "heroSubheading": "Building intelligent systems for human understanding, reflection, and continuity.",
-    "heroCta": "Explore Our Ecosystem",
-    "heroCtaLink": "/products",
-    "heroSecondCta": "Read Research",
-    "heroSecondCtaLink": "/research"
+    "heroHeading": "AI That Helps People Learn Better.",
+    "heroSubheading": "Building intelligent learning solutions through AI, data science, and purposeful innovation.",
+    "heroCta": "Explore Projects",
+    "heroCtaLink": "#projects",
+    "heroSecondCta": "Our Vision",
+    "heroSecondCtaLink": "#vision",
+    "aboutHeading": "Intelligence With a Purpose.",
+    "aboutText": "Viyaan AI builds intelligent learning experiences that help people move beyond memorisation towards deeper understanding, stronger problem-solving, and independent thinking.",
+    "aboutPurpose": "To make learning more effective, personalised, and accessible through purposeful AI innovation.",
+    "visionHeading": "Beyond Answers. Towards Understanding.",
+    "visionText": "We believe AI should help people build understanding, think independently, and continue learning."
   },
   "analytics": {
     "gaTrackingId": "",

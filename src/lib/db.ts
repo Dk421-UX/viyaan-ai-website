@@ -150,7 +150,12 @@ export async function getDb() {
           heroCta: homepageSettingsRes.data.hero_cta,
           heroCtaLink: homepageSettingsRes.data.hero_cta_link,
           heroSecondCta: homepageSettingsRes.data.hero_second_cta,
-          heroSecondCtaLink: homepageSettingsRes.data.hero_second_cta_link
+          heroSecondCtaLink: homepageSettingsRes.data.hero_second_cta_link,
+          aboutHeading: homepageSettingsRes.data.about_heading,
+          aboutText: homepageSettingsRes.data.about_text,
+          aboutPurpose: homepageSettingsRes.data.about_purpose,
+          visionHeading: homepageSettingsRes.data.vision_heading,
+          visionText: homepageSettingsRes.data.vision_text
         } : {},
         analytics: analyticsSettingsRes.data ? {
           gaTrackingId: analyticsSettingsRes.data.ga_tracking_id,

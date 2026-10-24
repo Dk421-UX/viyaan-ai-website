@@ -3,7 +3,7 @@
 import React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 const LinkedinIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -83,13 +83,13 @@ export default function FounderSection() {
         <div className="flex flex-col justify-between gap-4 flex-1">
           <div className="flex flex-col gap-2">
             <span className="text-[11px] uppercase tracking-widest text-[#00B2FF] font-mono font-medium">
-              Founding Vision
+              Founding Architect
             </span>
             <h3 className="font-display text-lg sm:text-xl font-semibold text-white tracking-tight">
-              An Open Journey of Discipline and Craft
+              An Open Journey in Education & Intelligent Systems
             </h3>
-            <p className="text-xs sm:text-sm text-neutral-400 leading-relaxed font-sans max-w-xl">
-              Viyaan AI is not built behind hidden doors or driven by venture hype. We design in public, sharing our research, engineering decisions, and daily lessons to build systems that amplify human potential.
+            <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed font-sans max-w-xl">
+              Viyaan AI is an AI-powered education initiative focused on rethinking how people learn through Artificial Intelligence, Data Science, and innovative learning techniques. We build in public, sharing our algorithms, architecture benchmarks, and daily lessons to keep human understanding and independent thinking at the center.
             </p>
           </div>
 
@@ -98,7 +98,7 @@ export default function FounderSection() {
               href="/founder"
               className="inline-flex items-center gap-1.5 text-xs text-neutral-300 hover:text-white font-sans transition-colors min-h-[36px]"
             >
-              <span>Explore founding philosophy</span>
+              <span>Explore founding journey and philosophy</span>
               <ArrowRight className="w-3 h-3 text-neutral-400" />
             </Link>
           </div>

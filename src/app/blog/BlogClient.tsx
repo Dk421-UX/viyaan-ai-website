@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import Navigation from "@/components/Navigation";
-import NewsletterSection from "@/components/NewsletterSection";
 import Footer from "@/components/Footer";
 import SiteContainer from "@/components/SiteContainer";
 import PageIntro from "@/components/PageIntro";
@@ -35,7 +34,7 @@ export default function BlogClient({ posts }: BlogClientProps) {
   const standardPosts = filteredPosts.length > 1 ? filteredPosts.slice(1) : [];
 
   return (
-    <div className="relative min-h-screen bg-[#050505] text-[#FFFFFF] flex flex-col overflow-x-hidden selection:bg-[#0066FF]/30">
+    <div className="relative min-h-screen bg-[#040711] text-[#FFFFFF] flex flex-col overflow-x-hidden selection:bg-[#0066FF]/35">
       <Navigation />
 
       {/* Subtle atmospheric ambient glow */}
@@ -163,8 +162,6 @@ export default function BlogClient({ posts }: BlogClientProps) {
           )}
         </SiteContainer>
       </main>
-
-      <NewsletterSection />
       <Footer />
     </div>
   );

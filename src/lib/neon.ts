@@ -124,7 +124,7 @@ export async function getDbFromNeon() {
       sql`SELECT * FROM company_settings WHERE id = 'only_one' LIMIT 1`,
       sql`SELECT * FROM navigation ORDER BY sort_order ASC`,
       sql`SELECT * FROM seo_settings`,
-      sql`SELECT * FROM products ORDER BY created_at DESC`,
+      sql`SELECT * FROM products ORDER BY sort_order ASC, created_at DESC`,
       sql`SELECT * FROM blogs ORDER BY created_at DESC`,
       sql`SELECT * FROM research ORDER BY created_at DESC`,
       sql`SELECT * FROM innovation_lab ORDER BY created_at DESC`,
@@ -152,15 +152,21 @@ export async function getDbFromNeon() {
     return {
       companyInfo: {
         name: companyData.name || "Viyaan AI",
-        tagline: companyData.tagline || "Intelligence Beyond the Human Mind.",
-        description: companyData.description || "",
+        tagline: companyData.tagline || "Beyond Learning. Beyond Limits.",
+        description: companyData.description || "Building intelligent learning solutions through AI, data science, and purposeful innovation.",
         email: companyData.email || "viyaan.ai.team@gmail.com",
         location: companyData.location || "Chennai, India / Remote",
-        linkedinCompany: companyData.linkedin_company || "",
+        websiteUrl: companyData.website_url || "https://viyaan-ai-website.onrender.com/",
+        linkedinCompany: companyData.linkedin_company || "https://www.linkedin.com/company/viyaan-ai",
+        linkedinEnabled: companyData.linkedin_enabled !== false,
+        linkedinDescription: companyData.linkedin_description || "",
+        linkedinLogoUrl: companyData.linkedin_logo_url || "",
+        linkedinDataSource: companyData.linkedin_data_source || "manual",
         linkedinFounder: companyData.linkedin_founder || "",
         twitterFounder: companyData.twitter_founder || "",
         responseTime: companyData.response_time || "2 business days",
-        founderImage: companyData.founder_image || "/founder.jpeg"
+        founderImage: companyData.founder_image || "/founder.jpeg",
+        copyrightText: companyData.copyright_text || "© 2026 Viyaan AI. Beyond Learning. Beyond Limits. All rights reserved."
       },
       navigation: navRows.map((n: any) => ({
         id: n.id,
@@ -173,11 +179,13 @@ export async function getDbFromNeon() {
         id: p.id,
         name: p.name,
         tagline: p.tagline,
+        projectStatus: p.tagline || "In Development",
         description: p.description,
         features: Array.isArray(p.features) ? p.features : [],
         dataFlow: p.data_flow,
         url: p.url,
-        status: p.status || "published"
+        status: p.status || "published",
+        sortOrder: p.sort_order ?? 0
       })),
       posts: blogRows.map((b: any) => ({
         slug: b.slug,
@@ -214,15 +222,20 @@ export async function getDbFromNeon() {
       careers: {
         title: careersData.title || "Connect with Our Mission",
         description: careersData.description || "",
-        linkedinLink: careersData.linkedin_link || ""
+        linkedinLink: careersData.linkedin_link || "https://www.linkedin.com/company/viyaan-ai"
       },
       homepage: {
-        heroHeading: homepageData.hero_heading || "Intelligence Beyond the Human Mind.",
-        heroSubheading: homepageData.hero_subheading || "",
-        heroCta: homepageData.hero_cta || "Explore Our Ecosystem",
-        heroCtaLink: homepageData.hero_cta_link || "/products",
-        heroSecondCta: homepageData.hero_second_cta || "Read Research",
-        heroSecondCtaLink: homepageData.hero_second_cta_link || "/research"
+        heroHeading: homepageData.hero_heading || "AI That Helps People Learn Better.",
+        heroSubheading: homepageData.hero_subheading || "Building intelligent learning experiences through AI, data science, and purposeful innovation.",
+        heroCta: homepageData.hero_cta || "Explore Projects",
+        heroCtaLink: homepageData.hero_cta_link || "#projects",
+        heroSecondCta: homepageData.hero_second_cta || "Our Vision",
+        heroSecondCtaLink: homepageData.hero_second_cta_link || "#vision",
+        aboutHeading: homepageData.about_heading || "Intelligence With a Purpose.",
+        aboutText: homepageData.about_text || "Viyaan AI builds intelligent learning experiences that help people move beyond memorisation towards deeper understanding, stronger problem-solving, and independent thinking.",
+        aboutPurpose: homepageData.about_purpose || "To make learning more effective, personalised, and accessible through purposeful AI innovation.",
+        visionHeading: homepageData.vision_heading || "Beyond Answers. Towards Understanding.",
+        visionText: homepageData.vision_text || "We believe AI should help people build understanding, think independently, and continue learning."
       },
       analytics: {
         gaTrackingId: analyticsData.ga_tracking_id || "",
@@ -256,8 +269,9 @@ export async function updateCompanySettingsNeon(data: any) {
   const sql = getNeonSql();
   await sql`
     INSERT INTO company_settings (
-      id, name, tagline, description, email, location, 
-      linkedin_company, linkedin_founder, twitter_founder, response_time, founder_image, updated_at
+      id, name, tagline, description, email, location, website_url,
+      linkedin_company, linkedin_enabled, linkedin_description, linkedin_logo_url, linkedin_data_source,
+      linkedin_founder, twitter_founder, response_time, founder_image, copyright_text, updated_at
     ) VALUES (
       'only_one', 
       ${data.name || "Viyaan AI"}, 
@@ -265,11 +279,17 @@ export async function updateCompanySettingsNeon(data: any) {
       ${data.description || ""}, 
       ${data.email || ""}, 
       ${data.location || ""}, 
-      ${data.linkedinCompany || data.linkedin_company || ""}, 
+      ${data.websiteUrl || data.website_url || "https://viyaan-ai-website.onrender.com/"},
+      ${data.linkedinCompany || data.linkedin_company || "https://www.linkedin.com/company/viyaan-ai"},
+      ${data.linkedinEnabled ?? data.linkedin_enabled ?? true},
+      ${data.linkedinDescription || data.linkedin_description || null},
+      ${data.linkedinLogoUrl || data.linkedin_logo_url || null},
+      "manual",
       ${data.linkedinFounder || data.linkedin_founder || ""}, 
       ${data.twitterFounder || data.twitter_founder || ""}, 
       ${data.responseTime || data.response_time || "2 business days"}, 
       ${data.founderImage || data.founder_image || "/founder.jpeg"}, 
+      ${data.copyrightText || data.copyright_text || "© 2026 Viyaan AI. Beyond Learning. Beyond Limits. All rights reserved."},
       NOW()
     )
     ON CONFLICT (id) DO UPDATE SET
@@ -278,11 +298,17 @@ export async function updateCompanySettingsNeon(data: any) {
       description = EXCLUDED.description,
       email = EXCLUDED.email,
       location = EXCLUDED.location,
+      website_url = EXCLUDED.website_url,
       linkedin_company = EXCLUDED.linkedin_company,
+      linkedin_enabled = EXCLUDED.linkedin_enabled,
+      linkedin_description = EXCLUDED.linkedin_description,
+      linkedin_logo_url = EXCLUDED.linkedin_logo_url,
+      linkedin_data_source = EXCLUDED.linkedin_data_source,
       linkedin_founder = EXCLUDED.linkedin_founder,
       twitter_founder = EXCLUDED.twitter_founder,
       response_time = EXCLUDED.response_time,
       founder_image = EXCLUDED.founder_image,
+      copyright_text = EXCLUDED.copyright_text,
       updated_at = NOW()
   `;
 }
@@ -324,18 +350,23 @@ export async function saveSeoSettingsNeon(data: Record<string, any>) {
 export async function saveProductNeon(product: any) {
   const sql = getNeonSql();
   const features = Array.isArray(product.features) ? product.features : [];
+  const sortOrder = typeof product.sortOrder === "number" ? product.sortOrder : parseInt(product.sortOrder || "0", 10) || 0;
+  const projectStatus = (product.projectStatus || product.tagline || "").trim() || "In Development";
+  const url = product.url && typeof product.url === "string" && product.url.trim() !== "" ? product.url.trim() : null;
+
   await sql`
     INSERT INTO products (
-      id, name, tagline, description, features, data_flow, url, status, updated_at
+      id, name, tagline, description, features, data_flow, url, status, sort_order, updated_at
     ) VALUES (
       ${product.id},
       ${product.name},
-      ${product.tagline || null},
+      ${projectStatus},
       ${product.description || null},
       ${features},
       ${product.dataFlow || product.data_flow || null},
-      ${product.url || null},
+      ${url},
       ${product.status || "published"},
+      ${sortOrder},
       NOW()
     )
     ON CONFLICT (id) DO UPDATE SET
@@ -346,6 +377,7 @@ export async function saveProductNeon(product: any) {
       data_flow = EXCLUDED.data_flow,
       url = EXCLUDED.url,
       status = EXCLUDED.status,
+      sort_order = EXCLUDED.sort_order,
       updated_at = NOW()
   `;
 }
@@ -480,15 +512,21 @@ export async function saveHomepageSettingsNeon(data: any) {
   const sql = getNeonSql();
   await sql`
     INSERT INTO homepage_settings (
-      id, hero_heading, hero_subheading, hero_cta, hero_cta_link, hero_second_cta, hero_second_cta_link, updated_at
+      id, hero_heading, hero_subheading, hero_cta, hero_cta_link, hero_second_cta, hero_second_cta_link,
+      about_heading, about_text, about_purpose, vision_heading, vision_text, updated_at
     ) VALUES (
       'main',
-      ${data.heroHeading || data.hero_heading || "Intelligence Beyond the Human Mind."},
-      ${data.heroSubheading || data.hero_subheading || ""},
-      ${data.heroCta || data.hero_cta || "Explore Our Ecosystem"},
-      ${data.heroCtaLink || data.hero_cta_link || "/products"},
-      ${data.heroSecondCta || data.hero_second_cta || "Read Research"},
-      ${data.heroSecondCtaLink || data.hero_second_cta_link || "/research"},
+      ${data.heroHeading || data.hero_heading || "AI That Helps People Learn Better."},
+      ${data.heroSubheading || data.hero_subheading || "Building intelligent learning solutions through AI, data science, and purposeful innovation."},
+      ${data.heroCta || data.hero_cta || "Explore Projects"},
+      ${data.heroCtaLink || data.hero_cta_link || "#projects"},
+      ${data.heroSecondCta || data.hero_second_cta || "Our Vision"},
+      ${data.heroSecondCtaLink || data.hero_second_cta_link || "#vision"},
+      ${data.aboutHeading || data.about_heading || "Intelligence With a Purpose."},
+      ${data.aboutText || data.about_text || "Viyaan AI builds intelligent learning experiences that help people move beyond memorisation towards deeper understanding, stronger problem-solving, and independent thinking."},
+      ${data.aboutPurpose || data.about_purpose || "To make learning more effective, personalised, and accessible through purposeful AI innovation."},
+      ${data.visionHeading || data.vision_heading || "Beyond Answers. Towards Understanding."},
+      ${data.visionText || data.vision_text || "We believe AI should help people build understanding, think independently, and continue learning."},
       NOW()
     )
     ON CONFLICT (id) DO UPDATE SET
@@ -498,6 +536,11 @@ export async function saveHomepageSettingsNeon(data: any) {
       hero_cta_link = EXCLUDED.hero_cta_link,
       hero_second_cta = EXCLUDED.hero_second_cta,
       hero_second_cta_link = EXCLUDED.hero_second_cta_link,
+      about_heading = EXCLUDED.about_heading,
+      about_text = EXCLUDED.about_text,
+      about_purpose = EXCLUDED.about_purpose,
+      vision_heading = EXCLUDED.vision_heading,
+      vision_text = EXCLUDED.vision_text,
       updated_at = NOW()
   `;
 }

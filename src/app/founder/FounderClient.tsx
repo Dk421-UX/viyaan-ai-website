@@ -3,7 +3,6 @@
 import React from "react";
 import Image from "next/image";
 import Navigation from "@/components/Navigation";
-import NewsletterSection from "@/components/NewsletterSection";
 import Footer from "@/components/Footer";
 import SiteContainer from "@/components/SiteContainer";
 import BackNav from "@/components/BackNav";
@@ -19,16 +18,16 @@ export default function FounderClient({ company }: FounderClientProps) {
   const twitter = company?.twitterFounder || "https://x.com/by_dharani";
 
   return (
-    <div className="relative min-h-screen bg-[#050505] text-[#FFFFFF] flex flex-col overflow-x-hidden selection:bg-[#0066FF]/30">
+    <div className="relative min-h-screen bg-[#040711] text-[#FFFFFF] flex flex-col overflow-x-hidden selection:bg-[#0066FF]/35">
       <Navigation />
 
       {/* Subtle atmospheric ambient glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-gradient-to-b from-white/[0.03] to-transparent blur-[140px] pointer-events-none -z-10" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-gradient-to-b from-[#0066FF]/10 to-transparent blur-[140px] pointer-events-none -z-10" />
 
       <main className="flex-1 page-header-offset">
         <SiteContainer>
           {/* Back navigation */}
-          <BackNav label="Back" fallbackHref="/" />
+          <BackNav label="Back to Home" fallbackHref="/" />
 
           {/* Balanced 2-Column Desktop Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-start">
@@ -45,7 +44,7 @@ export default function FounderClient({ company }: FounderClientProps) {
                 />
               </div>
 
-              <div className="mt-3 text-xs text-neutral-500 font-sans">
+              <div className="mt-3 text-xs text-neutral-400 font-sans">
                 <span>Chennai, India & Remote</span>
               </div>
             </div>
@@ -61,12 +60,12 @@ export default function FounderClient({ company }: FounderClientProps) {
                 </h1>
               </div>
 
-              <p className="text-sm sm:text-base text-neutral-300 leading-relaxed font-sans">
-                Viyaan AI is not built behind closed doors or driven by quarterly venture hype. We design and build in public, publishing our engineering benchmarks, cognitive models, architecture papers, and daily lessons.
+              <p className="text-sm sm:text-base text-neutral-200 leading-relaxed font-sans">
+                Viyaan AI is an AI-powered education initiative focused on rethinking how people learn through Artificial Intelligence, Data Science, and innovative learning techniques. We design and build in public, publishing our engineering benchmarks, cognitive models, architecture papers, and daily lessons.
               </p>
 
-              <p className="text-xs sm:text-sm text-neutral-400 leading-relaxed font-sans">
-                Our conviction is simple: Artificial Intelligence must be designed around human psychology and attention, not retention loops. Systems like JOI, Human OS, and Viyaan Future represent our commitment to building permanent foundations for human-computer symbiosis.
+              <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed font-sans">
+                Our conviction is simple: Artificial Intelligence must do more than provide answers. It should help people develop genuine understanding, identify study gaps, and think independently. Through tools like ExamRAG, EXAMORACLE, and Attendance Intelligence, we explore how software can support focused preparation, clearer explanations, and better revision without creating passive dependence on AI.
               </p>
 
               {/* Foundational Mandates */}
@@ -123,8 +122,6 @@ export default function FounderClient({ company }: FounderClientProps) {
           </div>
         </SiteContainer>
       </main>
-
-      <NewsletterSection />
       <Footer />
     </div>
   );
